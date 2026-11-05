@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="280" viewBox="0 0 480 280">
+  <title>Lantern Exchange</title><desc>Original schematic market illustration.</desc>
+  <rect width="480" height="280" fill="#15272e"/>
+  <path d="M60 210V90H420V210M40 215H440" fill="none" stroke="#9bd6c6" stroke-width="8"/>
+  <path d="M60 90 105 45H375L420 90Z" fill="#35504e" stroke="#f1bd65" stroke-width="4"/>
+  <g fill="#f1bd65"><circle cx="120" cy="125" r="16"/><circle cx="240" cy="125" r="16"/><circle cx="360" cy="125" r="16"/></g>
+  <path d="M95 210V160H180V210M210 210V160H295V210M325 210V160H395V210" fill="#35504e" stroke="#9bd6c6" stroke-width="4"/>
+  <text x="24" y="260" fill="#e8efec" font-family="sans-serif" font-size="12">DominikGursch / CC BY 4.0</text>
+</svg>

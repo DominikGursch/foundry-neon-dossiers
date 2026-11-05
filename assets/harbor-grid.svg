@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="800" viewBox="0 0 1000 800">
+  <title>Harbor Grid - original fictional district</title>
+  <desc>A schematic district with a channel, street grid, gardens and three landmarks. Not a depiction of Night City.</desc>
+  <rect width="1000" height="800" fill="#15272e"/>
+  <path d="M780 0 680 180 730 350 630 520 720 800H1000V0Z" fill="#24515a"/>
+  <g stroke="#86aaa6" stroke-width="16" fill="none">
+    <path d="M40 150H710M40 360H690M40 560H640M40 720H680M180 80V760M410 80V760M580 80V760"/>
+    <path d="M660 370 950 430M640 560 900 650" stroke="#f1bd65" stroke-width="12"/>
+  </g>
+  <g fill="#35504e" stroke="#9bd6c6" stroke-width="2">
+    <rect x="215" y="185" width="150" height="120" rx="12"/>
+    <rect x="450" y="190" width="85" height="130" rx="12"/>
+    <rect x="55" y="405" width="85" height="110" rx="12"/>
+    <rect x="220" y="405" width="140" height="110" rx="12"/>
+    <rect x="450" y="600" width="85" height="90" rx="12"/>
+  </g>
+  <g fill="#6c986f"><circle cx="640" cy="275" r="22"/><circle cx="670" cy="315" r="24"/><circle cx="630" cy="345" r="19"/></g>
+  <g font-family="sans-serif" fill="#e8efec">
+    <text x="40" y="50" font-size="28">HARBOR GRID</text>
+    <text x="40" y="80" font-size="16">Original fictional district / schematic, not to scale</text>
+    <text x="785" y="240" font-size="20" transform="rotate(18 785 240)">TIDAL CHANNEL</text>
+    <text x="45" y="790" font-size="13">Neon Dossiers / DominikGursch / CC BY 4.0</text>
+    <text x="850" y="740" font-size="25">N ↑</text>
+  </g>
+</svg>

@@ -1,0 +1,25 @@
+{
+  "ND": {
+    "open": "Neon Dossiers öffnen", "openHint": "Karte und freigegebene Ortsdossiers durchsuchen.",
+    "search": "Orte durchsuchen", "category": "Kategorie", "allCategories": "Alle Kategorien",
+    "community": "Gemeinschaft", "commerce": "Handel", "transit": "Verkehr", "mystery": "Mysterium",
+    "places": "Orte", "dossier": "Dossier", "noPlaces": "Keine sichtbaren passenden Orte.",
+    "choosePlace": "Marker oder Ort auswählen. Die Spielleitung kann private Beispielorte anlegen.",
+    "mapAlt": "Schematische Karte eines fiktiven Stadtviertels", "addPlace": "Ort hinzufügen",
+    "mapImage": "Lokales Kartenbild", "mapHint": "Relativer lokaler Bildpfad, z. B. worlds/meine-welt/maps/viertel.webp. Keine externen URLs.",
+    "examples": "Beispielorte anlegen", "examplesReady": "Beispielorte sind bereit. Dossiers nach Bedarf einzeln freigeben.",
+    "error": "Neon Dossiers konnte die Aktion nicht abschließen:", "gmOnly": "Nur die Spielleitung darf Dossiers ändern.",
+    "invalidPlace": "Ein ungültiges Dossier wurde übersprungen. Details stehen in der Konsole.",
+    "imageError": "Ein lokales Dossier- oder Kartenbild konnte nicht geladen werden. Pfad und Dateizugriff prüfen.",
+    "gmNotes": "Private SL-Notizen", "shared": "Standardzugriff: alle Spieler dürfen lesen.",
+    "private": "Standardzugriff: privat. Einzelne Freigaben sind möglich; Berechtigungen prüfen.",
+    "share": "Für alle Spieler freigeben", "unshare": "Privat machen (alle Spielerfreigaben entfernen)",
+    "permissions": "Berechtigungen", "edit": "Dossier bearbeiten", "delete": "Dossier löschen",
+    "confirmDelete": "Diesen Ort und seine privaten SL-Notizen dauerhaft löschen?",
+    "title": "Titel", "description": "Beschreibung als Klartext", "image": "Lokaler Illustrationspfad (optional)",
+    "browse": "Lokale Dateien durchsuchen", "positionHelp": "Beim Bearbeiten auf die Karte klicken oder Koordinaten von 0 bis 1 eingeben.",
+    "x": "Horizontale Position (0-1)", "y": "Vertikale Position (0-1)",
+    "save": "Dossier speichern", "cancel": "Abbrechen", "missingPlace": "Dieses Dossier existiert nicht mehr.",
+    "disclaimer": "Neon Dossiers is unofficial content provided under the Homebrew Content Policy of R. Talsorian Games and is not approved or endorsed by RTG. This content references materials that are the property of R. Talsorian Games and its licensees."
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "ND": {
+    "open": "Open Neon Dossiers", "openHint": "Browse the district map and journals you may observe.",
+    "search": "Search places", "category": "Category", "allCategories": "All categories",
+    "community": "Community", "commerce": "Commerce", "transit": "Transit", "mystery": "Mystery",
+    "places": "Places", "dossier": "Dossier", "noPlaces": "No visible matching places.",
+    "choosePlace": "Select a marker or a place. GMs can add private examples to get started.",
+    "mapAlt": "Schematic fictional district map", "addPlace": "Add place",
+    "mapImage": "Local map image", "mapHint": "Relative local image path, e.g. worlds/my-world/maps/district.webp. No remote URLs.",
+    "examples": "Add starter places", "examplesReady": "Starter places are ready. Share each dossier when appropriate.",
+    "error": "Neon Dossiers could not complete the action:", "gmOnly": "Only a GM can change dossiers.",
+    "invalidPlace": "An invalid dossier was skipped. See the console for details.",
+    "imageError": "A local dossier or map image could not be loaded. Check its path and file access.",
+    "gmNotes": "Private GM notes", "shared": "Default access: all players can observe.",
+    "private": "Default access: private. Individual grants may exist; check Permissions.",
+    "share": "Share with all players", "unshare": "Make private (revoke all player grants)",
+    "permissions": "Permissions", "edit": "Edit dossier", "delete": "Delete dossier",
+    "confirmDelete": "Permanently delete this place and its private GM notes?",
+    "title": "Title", "description": "Plain-text description", "image": "Local illustration path (optional)",
+    "browse": "Browse local files", "positionHelp": "Click the map while editing, or enter coordinates from 0 to 1.",
+    "x": "Horizontal position (0-1)", "y": "Vertical position (0-1)",
+    "save": "Save dossier", "cancel": "Cancel", "missingPlace": "This dossier no longer exists.",
+    "disclaimer": "Neon Dossiers is unofficial content provided under the Homebrew Content Policy of R. Talsorian Games and is not approved or endorsed by RTG. This content references materials that are the property of R. Talsorian Games and its licensees."
+  }
+}

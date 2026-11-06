@@ -70,7 +70,7 @@ async function collect(relative) {
 export async function build() {
   const manifest = JSON.parse(await readFile(path.join(root, "module.json"), "utf8"));
   const files = [];
-  for (const name of ["module.json", "LICENSE", "THIRD_PARTY_NOTICES.md"]) {
+  for (const name of ["module.json", "LICENSE", "THIRD_PARTY_NOTICES.md", "docs/ASSET_SOURCES.md"]) {
     files.push([name, await readFile(path.join(root, name))]);
   }
   // Licensing/provenance notices accompany installed art; development docs do not.

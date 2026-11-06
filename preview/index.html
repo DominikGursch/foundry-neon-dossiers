@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Neon Dossiers — Interactive preview</title>
+  <link rel="stylesheet" href="modules/neon-dossiers/styles/neon-dossiers.css">
+  <link rel="stylesheet" href="preview.css">
+</head>
+<body>
+  <header class="preview-bar">
+    <a href="https://github.com/DominikGursch/foundry-neon-dossiers">NEON DOSSIERS / PREVIEW</a>
+    <label>Ansicht / View <select id="role"><option value="gm">Spielleitung / GM</option><option value="player">Spieler / Player</option></select></label>
+    <label>Sprache / Language <select id="language"><option value="de">Deutsch</option><option value="en">English</option></select></label>
+    <button id="reset" type="button">Demo zurücksetzen / Reset</button>
+  </header>
+  <p class="preview-notice">Browser-Demo, keine Foundry-Instanz. Änderungen bleiben in diesem Browser. Originale Night-City-Karten mit Quellenangabe.
+    / Browser preview, not a Foundry server. Map scale, threat ratings and partial road networks are campaign approximations.
+    <a href="THIRD_PARTY_NOTICES.md">Quellen / Credits</a> ·
+    <a href="docs/GITHUB_PAGES_DE.md">GitHub-Pages-Anleitung</a></p>
+  <main class="neon-dossiers"><div class="window-content"><div class="nd-root"></div></div></main>
+  <section id="scene-preview" hidden aria-label="Scene preview">
+    <h2>Foundry scene adapter preview</h2>
+    <p>Nur Simulation der Szenennotizen; keine Foundry-Engine. / Simulates scene notes, not the Foundry engine.</p>
+    <div id="scene-map"></div>
+  </section>
+  <div id="notifications" role="status" aria-live="polite"></div>
+  <script type="module" src="preview.js"></script>
+</body>
+</html>

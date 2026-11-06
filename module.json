@@ -1,8 +1,8 @@
 {
   "id": "neon-dossiers",
   "title": "Neon Dossiers",
-  "description": "Original system-independent places and dossiers. Unofficial compatibility with Cyberpunk RED.",
-  "version": "0.1.0",
+  "description": "Permissioned city dossiers, districts, scene notes and street-graph travel estimates. Unofficial compatibility with Cyberpunk RED.",
+  "version": "0.2.0",
   "compatibility": { "minimum": "12", "maximum": "12" },
   "authors": [{ "name": "DominikGursch" }],
   "esmodules": ["scripts/module.js"],
@@ -12,7 +12,7 @@
     { "lang": "de", "name": "Deutsch", "path": "lang/de.json" }
   ],
   "url": "https://github.com/DominikGursch/foundry-neon-dossiers",
-  "manifest": "https://github.com/DominikGursch/foundry-neon-dossiers/releases/download/v0.1.0/module.json",
-  "download": "https://github.com/DominikGursch/foundry-neon-dossiers/releases/download/v0.1.0/neon-dossiers-0.1.0.zip",
+  "manifest": "https://github.com/DominikGursch/foundry-neon-dossiers/releases/download/v0.2.0/module.json",
+  "download": "https://github.com/DominikGursch/foundry-neon-dossiers/releases/download/v0.2.0/neon-dossiers-0.2.0.zip",
   "license": "LICENSE"
 }

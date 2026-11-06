@@ -30,5 +30,9 @@ Suggested attribution (adjust the modification statement as appropriate):
 > CC BY 4.0, https://creativecommons.org/licenses/by/4.0/.
 > Unmodified. Copyright 2026 DominikGursch. Provided as-is without warranties.
 
-The map is not Night City and does not reproduce any published map. There are
-no publisher, game, DLC or third-party image files in this asset set.
+Harbor Grid is not Night City and does not reproduce a published map.
+This license covers **only the four SVG files listed above**.
+The `night-city-*.webp` maps also shipped under `assets/` are third-party
+material and are **not CC BY 4.0 or MIT**. Their owners, sources, modifications
+and rights boundary are recorded in `docs/ASSET_SOURCES.md` and
+`THIRD_PARTY_NOTICES.md`.

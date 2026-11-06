@@ -1,0 +1,113 @@
+# Die Browser-Demo auf GitHub öffnen
+
+## Was ist GitHub Pages?
+
+GitHub Pages stellt die Dateien dieses Repositories als kleine Website bereit.
+Du bekommst danach einen Link, den du ganz normal im Browser öffnen kannst.
+Dein PC muss dafür nicht laufen, und du brauchst weder Node.js noch einen
+eigenen Webserver zu installieren.
+
+Hier veröffentlicht Pages **nur unsere interaktive Modul-Demo**: Karte,
+Marker, Dossiers, Districts, Routen und umschaltbare SL-/Spieleransichten.
+Es ist **kein Foundry-Server**. Eine echte gemeinsame Spielrunde benötigt
+weiterhin deine Foundry-Installation und eine gültige Foundry-Lizenz.
+
+## 1. Die neuen Dateien müssen zuerst auf GitHub sein
+
+Die Änderungen aus dieser Copilot-Arbeitskopie sind nicht automatisch auf
+GitHub. Solange sie nur lokal vorliegen, kann GitHub die neue Demo nicht bauen.
+
+Die Dateien müssen zunächst committed und gepusht und anschließend nach
+`main` übernommen werden, normalerweise über einen Pull Request.
+Zu ihnen gehört insbesondere `.github/workflows/pages.yml`.
+Erst danach ist der folgende Ablauf vollständig im GitHub-Webinterface
+verfügbar. Diese Anleitung selbst führt **keinen Push, Merge oder
+Deployment** aus.
+
+## 2. Pages einmalig einschalten
+
+1. Öffne dein Repository:
+   https://github.com/DominikGursch/foundry-neon-dossiers
+2. Klicke oben auf **Settings**.
+3. Wähle links unter **Code and automation** den Eintrag **Pages**.
+4. Suche den Abschnitt **Build and deployment**.
+5. Wähle bei **Source** die Option **GitHub Actions**.
+
+Du musst **keinen Branch namens `gh-pages`** anlegen und auch **keinen
+`/docs`-Ordner als Veröffentlichungsquelle** auswählen. Unser vorhandener
+Workflow erledigt das Erstellen und Veröffentlichen der Website.
+Wenn GitHub dir Vorlagen wie „Static HTML“ anbietet, brauchst du keine neue
+Vorlage zu erstellen: `pages.yml` ist bereits eingerichtet.
+
+Die Einstellung erfordert passende Repository-Berechtigungen.
+Wenn **Pages** fehlt oder deaktiviert ist, prüfe die Repository-Berechtigungen,
+deinen GitHub-Tarif und gegebenenfalls Organisationsrichtlinien. Aktiviere
+nicht versehentlich ein kostenpflichtiges Angebot.
+
+## 3. Die Demo veröffentlichen
+
+Nach neuen Änderungen auf `main` startet die Veröffentlichung automatisch.
+Falls der erste Lauf bereits vor dem Einschalten von Pages fehlgeschlagen ist,
+starte ihn erneut:
+
+1. Öffne oben im Repository den Reiter **Actions**.
+2. Wähle links **Deploy browser preview**.
+3. Klicke rechts **Run workflow**.
+4. Lass bei **Branch** zunächst **main** ausgewählt.
+5. Bestätige mit dem grünen Button **Run workflow**.
+6. Öffne den neu gestarteten Lauf und warte, bis **build** und **deploy**
+   grüne Häkchen anzeigen.
+
+„Workflow“ bedeutet hier einfach: GitHub führt unsere vorbereiteten Schritte
+aus. Dabei werden erst die Tests ausgeführt, dann die statische Demo gebaut
+und anschließend bei Pages veröffentlicht.
+
+Wenn **Run workflow** oder der Workflow fehlt, kontrolliere, ob die
+Workflow-Datei bereits auf `main` liegt, Actions erlaubt sind und du
+Schreibzugriff hast. Ein Pull Request allein veröffentlicht noch keine
+Pages-Demo.
+
+## 4. Den richtigen Link öffnen
+
+Im erfolgreichen Workflow-Lauf zeigt der Schritt **Deploy** die URL der
+Website an. Alternativ findest du sie unter **Settings > Pages** bei
+**Your site is live at** / **Visit site** oder im Deployment **github-pages**.
+
+Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
+`preview/index.html` ist nicht die Demo: GitHub zeigt dort nur ihren Quelltext.
+
+## 5. Die Demo ausprobieren
+
+- Die **Kartenauswahl** in der SL-Ansicht wechselt zwischen Atlas mit
+  District-Namen, Atlas ohne District-Namen, Community-Karte und Harbor Grid.
+- Die Atlas-Demo startet mit freigegebenen Dossiers. Für weitere Karten
+  **SL-WERKZEUGE > Beispielorte anlegen** verwenden und die gewünschten
+  Dossiers freigeben. Die Community-Karte hat keine aufgedruckten POI-Marker
+  und keine schwarzen Seitenstreifen. Sie startet ohne interaktive POIs;
+  mit **SL-WERKZEUGE > Ort hinzufügen** legt die Spielleitung eigene Orte an.
+- Einen nummerierten Marker anklicken: Rechts öffnet sich sein Dossier.
+- Einen District auswählen: Rechts erscheinen Threat Level, Fraktionen und
+  die für diese Ansicht sichtbaren POIs.
+- **Route / Orte** öffnen, einen Startort und eine Fortbewegung auswählen
+  und anschließend einen Zielmarker anklicken.
+- Auf **Spieler / Player** umschalten, um die eingeschränkte Ansicht zu sehen.
+- Die Karte ziehen, um sie zu verschieben; unten links mit **+ / -** zoomen.
+
+Der SL-/Spielerwechsel ist nur eine lokale Simulation. Alle Demodaten liegen
+in deinem Browser, nicht in einer gemeinsamen Foundry-Welt. Andere Besucher
+sehen deine Änderungen nicht. **Demo zurücksetzen / Reset** stellt den
+Startzustand in diesem Browser wieder her. Keine geheimen Kampagneninfos
+in eine öffentliche Demo eintragen.
+
+## Falls ein rotes Kreuz erscheint
+
+Öffne den fehlgeschlagenen Lauf unter **Actions**, dann den roten Job und
+den rot markierten Schritt. Die dortige Fehlermeldung unterscheidet etwa:
+Pages noch nicht aktiviert, fehlende Berechtigungen oder ein fehlgeschlagener
+Test. Ein erneuter Versuch behebt keine fehlende Pages-Einstellung.
+Wenn `deploy` auf eine Freigabe wartet, muss die zuständige Person das
+Deployment im Environment `github-pages` genehmigen.
+
+Nach einer erfolgreichen Veröffentlichung lädt GitHub bei künftigen
+Änderungen an `main` automatisch die neue Version hoch. Falls dein Browser
+noch einen älteren Stand zeigt, lade die Seite vollständig neu.

@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { ID, DEFAULT_MAP, EXAMPLES } from "../scripts/model.js";
+import { ID, DEFAULT_MAP, CITY_MAP, CITY_STREETS, COMMUNITY_MAP, EXAMPLES } from "../scripts/model.js";
+import { presetAtlas } from "../scripts/city.js";
 
 class Node {
   constructor(tag) {
@@ -12,11 +13,13 @@ class Node {
     this.style = {};
     this.value = "";
     this.isConnected = true;
+    this.clientWidth = this.clientHeight = this.scrollLeft = this.scrollTop = 0;
     this.textContent = "";
     if (tag === "form") this.elements = { namedItem: name => this.find(node => node.attributes.name === name) };
   }
   setAttribute(key, value) { this.attributes[key] = value; if (key === "value") this.value = value; }
   removeAttribute(key) { delete this.attributes[key]; }
+  remove() {}
   append(...children) { this.children.push(...children); }
   replaceChildren(...children) { this.children = [...children]; }
   addEventListener(event, action) { (this.events[event] ??= []).push(action); }
@@ -43,7 +46,7 @@ const settings = new Map([["mapImage", DEFAULT_MAP]]);
 const registered = new Map();
 const notifications = [];
 const en = JSON.parse(await readFile(new URL("../lang/en.json", import.meta.url))).ND;
-globalThis.document = { createElement: tag => new Node(tag) };
+globalThis.document = { createElement: tag => new Node(tag), createElementNS: (_namespace, tag) => new Node(tag) };
 globalThis.Application = class {
   static get defaultOptions() { return {}; }
   render() { this.rendered = true; return this; }
@@ -64,6 +67,7 @@ globalThis.game = {
   user: { id: "gm", isGM: true },
   i18n: { localize: key => en[key.replace("ND.", "")] ?? key },
   modules: new Map([[ID, module]]),
+  keybindings: { register(_id, _name, config) { assert.deepEqual(config.editable, [{ key: "KeyM", modifiers: ["Shift"] }]); } },
   settings: {
     register: (_id, name, config) => registered.set(name, config),
     registerMenu: (_id, name, config) => registered.set(name, config),
@@ -233,4 +237,94 @@ test("GM note updates replace grants; a failed note save keeps the form and does
   assert.deepEqual(note.ownership, { default: 0 });
   assert.equal(note.flags[ID].note, "updated");
   await gm.close();
+});
+
+test("districts and route origins respect visibility and drop revoked cached locations", async () => {
+  game.user = { id: "gm", isGM: true };
+  const a = await JournalEntry.create({ name: "Start", ownership: { default: 2 }, flags: { [ID]: { place: EXAMPLES[0] } } });
+  const b = await JournalEntry.create({ name: "End", ownership: { default: 2 }, flags: { [ID]: { place: EXAMPLES[2] } } });
+  game.user = { id: "player", isGM: false };
+  const board = newBoard();
+  board.selected = b.id;
+  board.origin = { id: a.id, ...EXAMPLES[0] };
+  board.draw();
+  assert.ok(board.root.find(node => node.className === "nd-route-summary"));
+  const panel = board.root.find(node => node.className === "nd-panel");
+  assert.ok(contains(panel, en.routeEstimate), "access disclaimers remain visible when the navigation drawer is closed");
+  settings.set("atlases", { [DEFAULT_MAP]: { ...presetAtlas(DEFAULT_MAP), nodes: [], edges: [] } });
+  board.draw();
+  assert.ok(contains(board.root.find(node => node.className === "nd-panel"), en.noRoads),
+    "route errors remain visible in the selected dossier");
+  settings.delete("atlases");
+  board.district = "relay-ward";
+  board.selected = null;
+  board.draw();
+  assert.ok(contains(board.root, en.threat));
+  assert.ok(contains(board.root, "Signal Runners"));
+  assert.ok(contains(board.root, EXAMPLES[2].title));
+  a.ownership = { default: 0 };
+  b.ownership = { default: 0 };
+  hooks.get("updateJournalEntry")(a);
+  assert.equal(board.origin, null);
+  assert.equal(board.selected, null);
+  assert.ok(!board.root.find(node => node.className === "nd-route-summary"));
+  assert.ok(!contains(board.root, EXAMPLES[2].title));
+  await board.close();
+});
+
+test("map switching keeps starter creation idempotent and saves separate customized configurations", async () => {
+  game.user = { id: "gm", isGM: true };
+  const board = newBoard();
+  settings.set("mapImage", CITY_MAP);
+  board.draw();
+  await findButton(board.root, en.examples).fire("click");
+  const count = () => game.journal.contents.filter(entry => entry.getFlag(ID, "place")?.mapImage === CITY_MAP).length;
+  assert.equal(count(), 8);
+  settings.set("mapImage", CITY_STREETS);
+  board.draw();
+  await findButton(board.root, en.examples).fire("click");
+  assert.equal(count(), 8, "Atlas image variants do not duplicate starters");
+  await findButton(board.root, en.configureAtlas).fire("click");
+  let form = board.root.querySelector("form");
+  form.querySelector("textarea").value = JSON.stringify({ ...presetAtlas(CITY_STREETS), kmAcross: 14 });
+  await form.fire("submit");
+  assert.equal(settings.get("atlases")[CITY_MAP].kmAcross, 14);
+  settings.set("mapImage", COMMUNITY_MAP);
+  board.draw();
+  await findButton(board.root, en.examples).fire("click");
+  assert.equal(game.journal.contents.filter(entry => entry.getFlag(ID, "place")?.mapImage === COMMUNITY_MAP).length, 7);
+  await findButton(board.root, en.configureAtlas).fire("click");
+  form = board.root.querySelector("form");
+  form.querySelector("textarea").value = JSON.stringify({ ...presetAtlas(COMMUNITY_MAP), kmAcross: 21 });
+  await form.fire("submit");
+  assert.equal(settings.get("atlases")[COMMUNITY_MAP].kmAcross, 21);
+  assert.equal(settings.get("atlases")[CITY_MAP].kmAcross, 14, "saving another map does not replace prior edits");
+  await board.close();
+  settings.set("mapImage", DEFAULT_MAP);
+});
+
+test("zoom preserves an unsaved dossier draft; invalid map data fails visibly", async () => {
+  game.user = { id: "gm", isGM: true };
+  const board = newBoard();
+  board.editing = { ...EXAMPLES[0] };
+  board.draw();
+  Object.assign(board.mapScroll, { scrollLeft: 100, scrollTop: 200, clientWidth: 800, clientHeight: 600 });
+  const form = board.root.querySelector("form");
+  form.elements.namedItem("title").value = "Unsaved title";
+  await form.elements.namedItem("title").fire("input");
+  form.elements.namedItem("notes").value = "Unsaved private note";
+  await form.elements.namedItem("notes").fire("input");
+  await findButton(board.root, "+").fire("click");
+  assert.equal(board.zoom, 1.25);
+  assert.deepEqual(board.viewport, { left: 225, top: 325 }, "zoom preserves the viewport center");
+  assert.equal(board.root.querySelector("form").elements.namedItem("title").value, "Unsaved title");
+  assert.equal(board.root.querySelector("form").elements.namedItem("notes").value, "Unsaved private note");
+  settings.set("mapImage", "https://invalid.example/map.png");
+  const originalConsole = console.error;
+  console.error = () => {};
+  try { board.draw(); } finally { console.error = originalConsole; settings.set("mapImage", DEFAULT_MAP); }
+  assert.ok(contains(board.root, en.invalidAtlas));
+  assert.ok(!contains(board.root, "Unsaved private note"));
+  assert.equal(notifications.at(-1)[0], "error");
+  await board.close();
 });

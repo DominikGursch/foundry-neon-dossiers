@@ -82,6 +82,8 @@ test("ZIP CRC and structure are deterministic and package excludes development f
   const { output, files: packed } = await build();
   assert.ok(packed.some(([name]) => name === "module.json"));
   assert.ok(packed.some(([name]) => name === "LICENSES/ASSETS.md"));
+  assert.ok(packed.some(([name]) => name === "docs/ASSET_SOURCES.md"));
+  assert.equal(packed.filter(([name]) => /^assets\/night-city-.*\.webp$/.test(name)).length, 3);
   assert.ok(packed.every(([name]) => !/^(tests|tools|\.git|README)/.test(name)));
   const zip = await readFile(output);
   let offset = 0;

@@ -1,0 +1,25 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: #08090d; color: #edf0f4; font: 13px "Segoe UI", sans-serif; }
+.preview-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 10px 18px; background: #111217; border-bottom: 1px solid #47303c; }
+.preview-bar a { color: #ff6571; letter-spacing: 1px; text-decoration: none; font: 700 10px ui-monospace, Consolas, monospace; margin-right: auto; }
+.preview-bar label { display: flex; gap: 8px; align-items: center; color: #b7b4c3; font-size: 11px; }
+button, select { font: inherit; background: #17181f; color: #edf0f4; border: 1px solid #49414b; border-radius: 0; padding: 6px; cursor: pointer; }
+.preview-notice { color: #a7a7b5; margin: 8px 18px; font-size: 10px; line-height: 1.6; }
+.preview-notice a { color: #62e5ee; }
+.neon-dossiers .window-content { height: calc(100dvh - 106px); min-height: 560px; margin: 0 10px 10px; border: 1px solid #47303c; }
+#notifications { position: fixed; bottom: 20px; right: 20px; max-width: min(500px, 85vw); z-index: 20; }
+#notifications p { background: #17181f; border-left: 3px solid #62e5ee; padding: 16px; box-shadow: 0 8px 30px #0008; }
+#notifications .error { border-color: #ff6571; }
+#scene-preview { margin: 24px; padding: 20px; border: 1px solid #47303c; }
+#scene-map { position: relative; max-width: 1000px; }
+#scene-map img { display: block; width: 100%; }
+#scene-map button { position: absolute; transform: translate(-50%, -50%); background: #08090d; border-color: #ff6571; }
+dialog { max-width: 500px; background: #111217; color: #edf0f4; border: 1px solid #ff6571; }
+dialog::backdrop { background: #000a; }
+dialog button { display: block; margin: 10px; }
+@media (max-width: 700px) {
+  .preview-bar { gap: 8px; padding: 8px; }
+  .preview-bar a { width: 100%; }
+  .preview-notice { margin: 8px; }
+  .neon-dossiers .window-content { height: calc(100dvh - 160px); min-height: 520px; margin: 0; }
+}

@@ -1,10 +1,12 @@
 {
   "name": "neon-dossiers",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "build": "node tools/package.mjs"
+    "build": "node tools/package.mjs",
+    "build:preview": "node tools/preview.mjs",
+    "preview": "node tools/serve-preview.mjs"
   }
 }

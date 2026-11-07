@@ -5,8 +5,10 @@ import { ID, CITY_MAP, CITY_STREETS, COMMUNITY_MAP, DEFAULT_MAP, EXAMPLES, mapFa
 import { atlasData, findRoute } from "../scripts/atlas.js";
 import { MAP_PRESETS, CITY_EXAMPLES, COMMUNITY_EXAMPLES, NIGHT_CITY_ATLAS, COMMUNITY_ATLAS, presetAtlas, starterPlaces } from "../scripts/city.js";
 import { currentAtlas } from "../scripts/scene.js";
+import { inspectNetwork } from "../scripts/network.js";
+import { communityPoint } from "../scripts/community-roads.js";
 
-test("every map preset and starter has valid, map-specific geography and connected routes", () => {
+test("every map preset has connected roads; legacy starter anchors do not imply approved access", () => {
   for (const { image } of MAP_PRESETS) {
     const atlas = presetAtlas(image);
     assert.deepEqual(atlasData(atlas), atlas);
@@ -18,10 +20,16 @@ test("every map preset and starter has valid, map-specific geography and connect
       assert.ok(atlas.districts.some(district => district.id === place.district));
       if (place.roadNode) assert.ok(atlas.nodes.some(node => node.id === place.roadNode));
       for (const mode of ["walk", "bike", "car", "av"]) {
-        const route = findRoute(atlas, examples[0], place, mode);
+        const from = atlas.nodes.find(node => node.id === examples[0].roadNode) ?? atlas.nodes[0];
+        const to = atlas.nodes.find(node => node.id === place.roadNode) ?? atlas.nodes.at(-1);
+        const route = findRoute(atlas, from, to, mode);
         assert.ok(Number.isFinite(route.minutes) && route.minutes >= 0);
         assert.ok(Number.isFinite(route.distanceKm) && route.distanceKm >= 0);
-        if (place !== examples[0]) assert.ok(route.minutes > 0);
+      }
+      assert.ok(findRoute(atlas, examples[0], place, "av").minutes >= 0);
+      if (place !== examples[0]) {
+        assert.throws(() => findRoute(atlas, examples[0], place, "car"), /unconnectedPlace/,
+          "unreviewed off-road starter anchors must not silently cross obstacles");
       }
     }
     atlas.nodes.length = 0;
@@ -34,6 +42,58 @@ test("every map preset and starter has valid, map-specific geography and connect
   assert.equal(presetAtlas("worlds/test/custom.webp"), null);
 });
 
+test("community mainland routes use the southern bridge and mainland streets, not a diagonal water access leg", () => {
+  const atlas = presetAtlas(COMMUNITY_MAP);
+  const node = id => atlas.nodes.find(node => node.id === id);
+  const route = findRoute(atlas, node("south-bridge-n"), node("rancho-bend"), "car");
+  assert.equal(route.accessKm, 0);
+  assert.ok(route.roadPoints.some(point => point.id === "heywood-bridge"));
+  assert.ok(route.roadPoints.some(point => point.id === "rancho-bend"));
+  const mainland = findRoute(atlas, node("rancho-bend"), node("heywood-s"), "car");
+  assert.ok(mainland.roadPoints.every(point => point.y > 0.75), "use local mainland streets, not a detour around the island");
+  assert.throws(() => findRoute(atlas, { x: 0.69, y: 0.91 }, node("heywood-s"), "car"), /unconnectedPlace/);
+});
+
+test("expanded community network has mode-connected local streets and no accidental unsplit crossings", () => {
+  assert.ok(COMMUNITY_ATLAS.nodes.length >= 650);
+  assert.ok(COMMUNITY_ATLAS.edges.length >= 900);
+  for (const mode of ["walk", "bike", "car"]) {
+    const report = inspectNetwork(COMMUNITY_ATLAS, mode);
+    assert.equal(report.components.length, 1, `${mode} street components`);
+    assert.deepEqual(report.duplicateEdges, []);
+    assert.deepEqual(report.zeroLengthEdges, []);
+    assert.deepEqual(report.crossings, [], "every included at-grade crossing has an explicit common node");
+    const ids = new Set(report.components[0]);
+    for (const id of ["north-bridge", "south-bridge", "island-n", "japantown", "glen-center", "rancho-n", "heywood-s"]) {
+      assert.ok(ids.has(id), `${id} must be connected for ${mode}`);
+    }
+  }
+  const node = id => COMMUNITY_ATLAS.nodes.find(node => node.id === id);
+  const park = node("c829-577"), university = node("c695-543");
+  const walk = findRoute(COMMUNITY_ATLAS, university, park, "walk");
+  const car = findRoute(COMMUNITY_ATLAS, university, park, "car");
+  assert.ok(car.distanceKm > walk.distanceKm, "park paths must not act as driving shortcuts");
+  const before = structuredClone(NIGHT_CITY_ATLAS);
+  presetAtlas(COMMUNITY_MAP).nodes[0].x = 0;
+  assert.deepEqual(NIGHT_CITY_ATLAS, before, "Community work leaves Atlas data unchanged");
+});
+
+test("cross-bay trips use the depicted bridge, not a nearest-node connector", () => {
+  const a = COMMUNITY_ATLAS, node = id => a.nodes.find(node => node.id === id);
+  for (const mode of ["walk", "bike", "car"]) {
+    const south = findRoute(a, node("glen-s"), node("rancho-n"), mode);
+    assert.ok(south.roadPoints.some(point => point.id === "south-bridge"));
+    assert.equal(south.accessKm, 0);
+    const north = findRoute(a, node("c735-238"), node("island-n"), mode);
+    assert.ok(north.roadPoints.some(point => point.id === "north-bridge"));
+    assert.equal(north.accessKm, 0);
+  }
+  const withoutBridges = { ...a, edges: a.edges.filter(edge =>
+    ![edge.from, edge.to].some(id => ["north-bridge", "south-bridge"].includes(id))) };
+  const detour = findRoute(withoutBridges, node("glen-s"), node("rancho-n"), "car");
+  assert.ok(detour.roadPoints.some(point => point.id === "east-bridge"), "remaining land corridor is used explicitly");
+  assert.ok(detour.distanceKm > findRoute(a, node("glen-s"), node("rancho-n"), "car").distanceKm);
+});
 test("Atlas variants share POIs without leaking Harbor or community coordinates", () => {
   const legacy = { ...EXAMPLES[0] };
   delete legacy.mapImage;
@@ -53,8 +113,8 @@ test("marker-free community crop transforms every coordinate without changing th
   assert.equal(afterlife.x, (904 / 1600 * 3615 - 549) / 2519);
   assert.equal(afterlife.y, 407 / 1066);
   const node = COMMUNITY_ATLAS.nodes.find(node => node.id === "afterlife");
-  assert.equal(node.x, (978 / 1600 * 3615 - 549) / 2519);
-  assert.equal(node.y, 397 / 1066);
+  assert.deepEqual({ x: node.x, y: node.y }, communityPoint(953,420),
+    "street anchors are corrected independently of dossier and district coordinates");
   const district = COMMUNITY_ATLAS.districts.find(district => district.id === "hot-zone");
   assert.equal(district.name, "City Center");
   assert.equal(district.polygon[0].x, (737 / 1600 * 3615 - 549) / 2519);
@@ -65,7 +125,7 @@ test("marker-free community crop transforms every coordinate without changing th
 test("map configurations preserve legacy edits and separate customized map families", () => {
   const settings = new Map();
   globalThis.game = { settings: { get: (_id, name) => settings.get(name) } };
-  assert.equal(currentAtlas().image, CITY_MAP, "new worlds default to Night City");
+  assert.equal(currentAtlas().image, COMMUNITY_MAP, "unconfigured worlds default to the marker-free community map");
   settings.set("atlas", { ...presetAtlas(DEFAULT_MAP), kmAcross: 9 });
   settings.set("mapImage", DEFAULT_MAP);
   assert.equal(currentAtlas().kmAcross, 9, "legacy world settings are preserved");

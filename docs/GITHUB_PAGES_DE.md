@@ -80,8 +80,9 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
 
 - Die **Kartenauswahl** in der SL-Ansicht wechselt zwischen Atlas mit
   District-Namen, Atlas ohne District-Namen, Community-Karte und Harbor Grid.
-- Die Atlas-Demo startet mit freigegebenen Dossiers. Für weitere Karten
-  **SL-WERKZEUGE > Beispielorte anlegen** verwenden und die gewünschten
+- Eine neue oder zurückgesetzte Demo startet auf der **Community-Karte ohne
+  Dossiers**. Bereits im Browser gespeicherte Kartenauswahl und Daten bleiben
+  erhalten. Optional **SL-WERKZEUGE > Beispielorte anlegen** verwenden und die gewünschten
   Dossiers freigeben. Die Community-Karte hat keine aufgedruckten POI-Marker
   und keine schwarzen Seitenstreifen. Sie startet ohne interaktive POIs;
   mit **SL-WERKZEUGE > Ort hinzufügen** legt die Spielleitung eigene Orte an.
@@ -89,9 +90,31 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
 - Einen District auswählen: Rechts erscheinen Threat Level, Fraktionen und
   die für diese Ansicht sichtbaren POIs.
 - **Route / Orte** öffnen, einen Startort und eine Fortbewegung auswählen
-  und anschließend einen Zielmarker anklicken.
+  und anschließend einen Zielmarker anklicken oder das Ziel im Menü auswählen.
+  Die Route wird direkt auf der simulierten Kartenszene dargestellt, ohne
+  zusätzliches Journal- oder Modulfenster.
+- Bodenrouten benötigen erfasste Straßen und angebundene Orte. Beispielorte
+  sind keine geprüften Straßeneingänge: bei Bedarf im Dossiereditor **Zugang
+  auf Karte zeichnen**, begehbare Wegpunkte setzen und mit einem roten
+  Straßenknoten abschließen. Alternativ neue Orte direkt an erfasste Straßen
+  setzen (maximal 20 m Einrastabstand). Freie Verbindungen quer über Wasser
+  werden nicht mehr automatisch gezeichnet.
+- Über **SL-WERKZEUGE > Straße einzeichnen** das Teilnetz ergänzen, vorhandene
+  Knoten zum Anschließen anklicken und erlaubte Fortbewegungen wählen.
+- **SL-WERKZEUGE > Straßennetz prüfen** zeigt Straßen nach Fortbewegung,
+  verbundene Netzteile, Endpunkte und unverbundene geometrische Kreuzungen.
+  Abschnitte lassen sich dort auswählen und in Fortbewegung/Richtung ändern
+  oder löschen. Das Community-Netz enthält 696 Knoten und 995 Abschnitte,
+  ist aber **keine vollständige Erfassung sämtlicher Straßen und Gassen**.
+- Bereits gespeicherte eigene Netze werden nicht automatisch ersetzt.
+  Zum Aktualisieren zuerst die JSON-Konfiguration sichern, dann in der
+  Prüfansicht ausdrücklich **Aktuelles Vorlagen-Straßennetz übernehmen**
+  bestätigen. Nur die Straßen dieser Kartenfamilie werden ersetzt; bestehende
+  Ortszugänge müssen anschließend kontrolliert werden.
 - Auf **Spieler / Player** umschalten, um die eingeschränkte Ansicht zu sehen.
-- Die Karte ziehen, um sie zu verschieben; unten links mit **+ / -** zoomen.
+- Den Kartenhintergrund ziehen, um ihn zu verschieben; mit dem Mausrad oder
+  unten links mit **+ / -** zoomen. Dossierkarten und SL-Editor liegen rechts
+  direkt über der Szene. In echtem Foundry gelten dessen Canvas-Steuerungen.
 
 Der SL-/Spielerwechsel ist nur eine lokale Simulation. Alle Demodaten liegen
 in deinem Browser, nicht in einer gemeinsamen Foundry-Welt. Andere Besucher

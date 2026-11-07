@@ -1,7 +1,7 @@
 {
   "id": "neon-dossiers",
   "title": "Neon Dossiers",
-  "description": "Permissioned city dossiers, districts, scene notes and street-graph travel estimates. Unofficial compatibility with Cyberpunk RED.",
+  "description": "Interactive scene-based city dossiers, district cards, GM tools and personal street routes. Unofficial compatibility with Cyberpunk RED.",
   "version": "0.2.0",
   "compatibility": { "minimum": "12", "maximum": "12" },
   "authors": [{ "name": "DominikGursch" }],

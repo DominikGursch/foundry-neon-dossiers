@@ -16,11 +16,13 @@ clicking the map or entering normalized coordinates, and share or revoke
 dossier access. English and German interface translations are included.
 Starter descriptions are in English.
 
-The board now includes district boundaries and cards (threat level, gangs,
-description, and every **visible** POI), zoom, per-client route planning and
-estimated distance/time for walking, cycling, driving or AV flight. GMs can
-create a Foundry scene with the selected background and synchronized public
-POI journal notes. The independently authored red/black terminal layout has a
+The module overlays the **actual Foundry map scene**, not a separate dossier
+window. Numbered places open compact dossier cards directly over the map;
+players never need to open a journal. District cards, personal route controls,
+and route lines are on the scene too. The GM uses the same interface with a
+collapsible tool menu and a side-card editor. Journals remain the invisible
+storage and permission layer; illustrations remain local files.
+The independently authored red/black terminal layout has a
 compact header, color-coded category strip, large draggable map, numbered
 markers, collapsible navigation and floating right-hand dossier cards.
 
@@ -30,6 +32,8 @@ fictional map remains available. Choose a map from the GM's **Map selection**
 dropdown. Atlas presets include 24 district annotations and eight starter
 dossiers; the community preset has 17 district annotations and seven
 separately positioned starter dossiers. This is not a full Atlas POI import.
+The community map is the **default for unconfigured worlds and fresh demos**.
+Saved map selections and custom configurations are not overwritten.
 The community image is the requested marker-free version, cropped to remove
 the black side panels. It starts without POIs; the GM can add dossiers manually.
 Starter dossiers are optional and created only via **Add starter places**.
@@ -40,7 +44,8 @@ official Atlas if your campaign needs the later geography.
 approximations**, not official ratings or complete street data. Sources,
 attributions and exact map modifications are recorded in
 [`docs/ASSET_SOURCES.md`](docs/ASSET_SOURCES.md). Copyright credits are also
-visible beneath the map and preserved inside the images.
+visible beneath the map. Atlas credits remain inside the images; credits
+removed from the community sidebars are reproduced in the shipped notices.
 
 **Target: Foundry VTT v12 only.** This prerelease uses core v12 Application,
 JournalEntry and ownership APIs. Unit tests and mocked lifecycle/UI checks are
@@ -70,10 +75,16 @@ press **Shift+M**, or run a script macro:
 game.modules.get("neon-dossiers").api.open();
 ```
 
+The GM's first open creates/views the managed scene. Activate it through
+Foundry's scene navigation for players. Its interface appears automatically
+when the scene loads; players do not need a hotkey, journal directory or window.
+Opening the module from another scene as a player reports that the GM must
+activate the map; it does not force a scene switch.
+
 As GM, open **GM TOOLS > Add starter places** once to create private
 starter dossiers for the selected map.
 Select one and click **Share with all players** when ready. Each player opens
-the board separately; it never forces windows open on other clients.
+their dossier cards independently; selection and routes are not broadcast.
 
 ## Test directly from GitHub
 
@@ -82,14 +93,17 @@ what Pages does, where to click, why local edits are not yet online, and where
 GitHub displays the published URL. Pages hosts only the demo, not Foundry.
 
 The repository includes a static **GitHub Pages browser demo**, using the
-**same module renderer, data validation and route engine**, with a small
-simulated Foundry adapter. It does not contain or require licensed Foundry
-server software. Toggle GM/Player and Deutsch/English; eight Atlas POIs are
-already shared and an additional fictional safehouse is private. Share/revoke
-as GM, then switch to Player. Open **Route / Places**, choose a starting POI
+**same scene HUD, data validation and route engine**, with a small
+simulated canvas/Foundry adapter. It does not contain or require licensed Foundry
+server software. Fresh demos start on the community map **without dossiers**.
+Add your own places (or explicitly add optional starters), then share/revoke
+as GM and switch to Player. Toggle Deutsch/English. Open **Route / Places**, choose a starting POI
 and a destination, or click **Set start on map**.
-Choose a district to open its card. The scene button shows an explicitly
-labeled adapter simulation, not an actual Foundry canvas.
+Choose a district to open its card. The background canvas, panning and scene
+lifecycle are adapter simulations, not the licensed Foundry engine.
+Starter POI anchors are **not verified street entrances**. For ground routes,
+trace their access paths first, or place new POIs directly on mapped streets.
+Old distant `roadNode` assignments no longer invent straight access lines.
 
 1. Push these changes to GitHub. Under **Settings > Pages > Build and deployment**,
    select **GitHub Actions** (requires repository admin access).
@@ -152,18 +166,25 @@ preserves customized scale, district and road settings.
 
 ## Foundry scene and player access
 
-As GM, click **Create / open map scene**. This creates or updates the dedicated
+Opening the module as GM, or clicking **Create / open map scene**, creates or updates the dedicated
 scene, sets the background, disables token vision and opens it **only for the GM**.
-Activate it through Foundry's scene navigation to bring players there. If
-notes are hidden, enable **Journal Notes > Toggle Notes Display** on each client.
-Double-click a POI note to open its dossier board. Navigation is displayed in
-the board, not drawn as a persistent route on the Foundry canvas.
+Activate it through Foundry's scene navigation to bring players there.
+The HUD mounts on scene load and follows Foundry's pan/zoom transform.
+Click a numbered place once for its dossier card. **Route / Places** selects
+start, destination and travel mode; the personal route appears directly on
+the map. Walking is cyan, cycling green, driving blue, AV dashed violet.
+GM-traced walking access is dashed amber. Foundry's usual canvas pan/zoom
+controls remain available; the HUD also supplies zoom/center buttons.
+Leaving the scene removes the HUD, pointer handlers and personal route.
+No journal window or Journal Notes visibility toggle is required.
 
 Only POIs whose default journal ownership is **Observer or higher**, with no
 explicit lower player grant, get scene
 notes: private or individually shared locations must not leak coordinates
-through the scene document. Individually shared dossiers remain accessible
-in the board for authorized players. Core journal permissions remain
+through the scene document. Individually shared dossiers receive **client-only
+HUD markers** for authorized players, never public note documents.
+Core note icons are hidden on the managed scene to avoid duplicate markers.
+Core journal permissions remain
 authoritative for note access. Public note position/title changes and
 share/revoke/delete operations synchronize while an active GM is online;
 ready-time synchronization repairs the scene on the next GM connection.
@@ -178,6 +199,42 @@ editor, not by dragging the derived scene notes. Deleting the scene does not
 delete dossiers; use the scene button to recreate it.
 
 ## Districts, scale and roads
+
+Use **GM TOOLS > Draw road** to trace streets and bridges point by point
+directly on the scene. Click existing red nodes to join the graph; crossing
+lines are not automatically connected. Choose permitted travel modes and save.
+Cancel leaves the saved network unchanged; undo removes the last draft point.
+All road geometry is public and the GM is responsible for tracing traversable
+streets, not straight shortcuts through water or buildings.
+
+**Community street survey:** `scripts/community-roads.js` records 696
+image-positioned junctions/bends and 995 segments. It expands Watson, the
+island street grid and City Center rings, the Glen, Westbrook, mainland
+Heywood, Rancho Coronado and Pacifica. The northern/southern bridges are
+explicit; Lake Park links are restricted to walking/cycling. Coordinates
+were inspected against image crops and street overlays; at-grade junction
+decisions are explicit, not inferred from every geometric crossing.
+This is **still not every visible alley or road**, and is not an automated
+image-recognition service. Morro Rock and Executive Zone interiors, many
+minor streets, access restrictions and official traffic directions remain
+unmapped. Bidirectional access and allowed modes are editable campaign
+assumptions, not facts extracted from road signs.
+
+**GM TOOLS > Inspect street network** overlays the selected travel mode's
+graph on the map. Colors distinguish connected components; amber circles
+show dead ends and red circles flag crossings without a shared node.
+Counts also expose unused nodes, duplicate and zero-length edges. A crossing
+warning is not proof of an error: overpasses must stay disconnected.
+Click a segment to change modes, make it one-way in `from` → `to` direction,
+or delete it. Component counts ignore direction; try both travel directions
+when reviewing one-way roads.
+
+Existing saved street graphs are **not automatically replaced** by this
+expanded survey. Back up the JSON first. In the review card, **Load current
+preset streets** requires confirmation and replaces only this family's
+street nodes/edges, not scale, districts, dossiers or other map families.
+Corrected street coordinates can invalidate previously traced POI access
+paths: check and retrace those after replacing a saved graph.
 
 Use **Map / districts / roads** as GM to edit the validated atlas JSON. The
 current configuration is shown as a starting point and can be copied for a
@@ -228,27 +285,40 @@ Minimal example (replace the image path with the currently selected map):
 Coordinates are fractions of the image; IDs use letters, numbers, `_` or `-`
 (1-64 characters) and must be unique within nodes/districts. District threats:
 `low`, `moderate`, `high`, `extreme`. Assign a district in each POI's editor;
-membership is explicit, not inferred from polygon overlap. Its optional road
-node ID specifies an entrance; otherwise the nearest mode-compatible node is
-used. Keep IDs stable when editing the atlas.
+membership is explicit, not inferred from polygon overlap. Keep IDs stable
+when editing the atlas.
 
-Edges are **bidirectional**, straight street segments between nodes; place
+**Connecting a place:** a ground-route endpoint must lie within **20 metres**
+of a mode-compatible mapped street segment. It snaps to that segment, not a
+distant intersection; no connector is drawn or counted for this tolerance.
+Otherwise edit the dossier and choose **Trace access on map**: starting at
+the POI, click walkable waypoints and finish by clicking a red street node.
+The dossier stores `roadNode` and `access` (2-100 normalized `{x,y}` points,
+first at the POI, last at that node). These are explicit GM-authored walking
+legs, not automatic obstacle detection. Moving the POI clears its traced
+access. A bare legacy `roadNode` is only usable within the same 20 m tolerance;
+more distant assignments now report missing access rather than invent a path.
+Existing off-road starter anchors need the same review.
+
+Edges are **bidirectional by default**, straight street segments between nodes; place
 additional nodes at bends and actual junctions. Connect bridges explicitly and
 do not add edges through water, buildings or other barriers. Crossed lines are
 not connected unless they share a node ID. Mode restrictions can represent
-pedestrian-only streets. Configuration currently uses JSON rather than an
-automatic map-image road extractor or graphical street editor.
+pedestrian-only streets. Optional `"oneWay": true` permits only `from` → `to`
+for all modes listed on that edge. Use separate mode-specific edges if
+pedestrians may travel both ways. Roads can be drawn and inspected on the map;
+JSON remains available for detailed junction/topology corrections. There is
+no automatic runtime map-image road extractor.
 
 Routing uses Dijkstra's shortest-distance path over mode-compatible edges,
 accounting for image aspect ratio and scale. The estimate uses 5/15/35 km/h for
-walking/bike/car. Amber dashed endpoint-to-road segments are **approximate
-access legs**, included in distance and walked at 5 km/h even for car/bike.
-They are not obstacle-aware; choose suitable entrance nodes to avoid misleading
-access. Disconnected/unconfigured roads produce a visible error, **never a
+walking/bike/car. Amber dashed **GM-traced access legs** are included in
+distance and walked at 5 km/h even for car/bike.
+Unconnected places and disconnected/unconfigured roads produce a visible error, **never a
 straight-line driving fallback**. AV is explicitly a 100 km/h straight-line
 flight estimate without airspace/landing checks. No traffic, encounters, game
 clock advancement, current GPS position or Google Maps service is included.
-Routes and start positions are personal to each open board and not persisted
+Routes and start positions are personal to each client/scene and not persisted
 or broadcast. Private/revoked POIs cannot remain as cached starts/destinations.
 
 ## Permissions and private information
@@ -320,8 +390,11 @@ open both settings menu and toolbar; add/edit/delete; select a local image;
 resize the board; check keyboard focus; connect a non-GM; share/revoke a
 dossier while it is open on that client; confirm private notes never appear
 in that client's journal data/network traffic; reload both clients; and try
-the intended game system. Also create/activate the map scene, enable note
-display, double-click a shared note as a player, revoke it, configure real
-image dimensions/scale, test a disconnected road and mode restrictions, and
-inspect a district containing both public and private places. This checklist
+the intended game system. Also create/activate the map scene, single-click HUD markers as a player,
+pan/zoom and resize with a route visible, check marker/line alignment, draw
+roads and access paths, switch scenes repeatedly, revoke individually shared
+places, and verify no stale route/listeners or duplicate core note icons remain.
+Configure real image dimensions/scale, test an unconnected place, a
+disconnected road and mode restrictions, and inspect a district containing
+both public and private places. This checklist
 is not a claim those engine checks ran.

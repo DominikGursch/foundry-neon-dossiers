@@ -1,13 +1,14 @@
 import { DEFAULT_MAP, CITY_MAP, CITY_STREETS, COMMUNITY_MAP } from "./model.js";
 import { atlasData, DEFAULT_ATLAS } from "./atlas.js";
+import { COMMUNITY_ROADS, communityPoint } from "./community-roads.js";
 
 export const MAP_PRESETS = [
+  { image: COMMUNITY_MAP, label: "communityMap", credit: "Ced23Ric · Rodhlann · Writer's Cthulhu · J. Gray / R. Talsorian Games",
+    url: "https://www.reddit.com/r/cyberpunkred/comments/z1744r/night_city_2045_map_cleaned_and_updated/" },
   { image: CITY_MAP, label: "atlasDistricts", credit: "Night City Atlas · Saga MacKenzie / © 2025 R. Talsorian Games",
     url: "https://rtalsoriangames.com/wp-content/uploads/2025/01/Night-City-2045-Atlas-Maps-1.01.zip" },
   { image: CITY_STREETS, label: "atlasStreets", credit: "Night City Atlas · Saga MacKenzie / © 2025 R. Talsorian Games",
     url: "https://rtalsoriangames.com/wp-content/uploads/2025/01/Night-City-2045-Atlas-Maps-1.01.zip" },
-  { image: COMMUNITY_MAP, label: "communityMap", credit: "Ced23Ric · Rodhlann · Writer's Cthulhu · J. Gray / R. Talsorian Games",
-    url: "https://www.reddit.com/r/cyberpunkred/comments/z1744r/night_city_2045_map_cleaned_and_updated/" },
   { image: DEFAULT_MAP, label: "harborDemo", credit: "Harbor Grid · DominikGursch · CC BY 4.0",
     url: "https://creativecommons.org/licenses/by/4.0/" }
 ];
@@ -132,7 +133,7 @@ export const CITY_EXAMPLES = [
 export const ATLAS_SOURCE = "https://rtalsoriangames.com/wp-content/uploads/2025/01/RTG-CPR-DLC-NightCityAtlasv1.01.pdf";
 
 // Existing anchors use the full 3615px source; the marker-free map omits both sidebars.
-const cp = (x, y) => ({ x: (x / 1600 * 3615 - 549) / 2519, y: y / 1066 });
+const cp = communityPoint;
 const communityDistrict = (id, outline) => ({
   ...districts.find(district => district.id === id),
   ...(id === "hot-zone" ? {
@@ -141,30 +142,9 @@ const communityDistrict = (id, outline) => ({
   } : {}),
   polygon: outline.map(([x, y]) => cp(x, y))
 });
-const communityNodes = [], communityEdges = [];
-function communityRoad(points) {
-  for (const [id, x, y] of points) {
-    if (!communityNodes.some(node => node.id === id)) communityNodes.push({ id, ...cp(x, y) });
-  }
-  for (let i = 1; i < points.length; i++) communityEdges.push({
-    from: points[i - 1][0], to: points[i][0], modes: ["walk", "bike", "car"]
-  });
-}
-communityRoad([["north-bridge",742,275],["island-n",738,329],["ring-nw",645,350],["ring-west-1",553,376],
-  ["ring-west-2",524,402],["ring-west-3",551,452],["university-west",556,500],["university-south",547,560],
-  ["south-west",553,604],["south-west-2",571,699],["ring-sw",604,760],["ring-s",640,784],
-  ["south-bridge-n",779,790],["ring-se",862,775],["combat-s",920,700],["combat-e",955,630],
-  ["china-s",1000,566],["china-e",1045,515],["island-e",1075,490],["east-bridge",1125,460]]);
-communityRoad([["island-n",738,329],["marina-nw",870,350],["stadium",920,351],["afterlife",978,397],
-  ["medical",1014,435],["marina-se",1050,458],["island-e",1075,490]]);
-communityRoad([["university-south",547,560],["university-east",697,554],["glen-nw",732,578],
-  ["glen-n",810,578],["japantown",900,578],["china-road",970,580],["china-s",1000,566]]);
-communityRoad([["glen-n",810,578],["glen-center",804,649],["glen-s",801,744],["south-bridge-n",779,790],
-  ["south-bridge",782,849],["heywood-bridge",783,899]]);
-
 export const COMMUNITY_ATLAS = atlasData({
   image: COMMUNITY_MAP, width: 2519, height: 2408, kmAcross: 18 * 2519 / 3615,
-  nodes: communityNodes, edges: communityEdges,
+  ...COMMUNITY_ROADS,
   districts: [
     communityDistrict("norcal-base", [[600,0],[851,0],[851,90],[708,107],[665,65]]),
     communityDistrict("watson", [[665,67],[851,93],[873,178],[834,280],[703,243]]),

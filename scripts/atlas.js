@@ -2,6 +2,7 @@ import { DEFAULT_MAP, imagePath, noteText } from "./model.js";
 
 export const MODES = { walk: 5, bike: 15, car: 35, av: 100 };
 export const THREATS = ["low", "moderate", "high", "extreme"];
+export const ROAD_SNAP_KM = 0.02;
 const identifier = value => typeof value === "string" && /^[a-zA-Z0-9_-]{1,64}$/.test(value);
 
 function point(value) {
@@ -41,7 +42,11 @@ export function atlasData(input) {
     if (!ids.has(edge.from) || !ids.has(edge.to) || edge.from === edge.to) throw new Error("Invalid road edge");
     if (!Array.isArray(edge.modes) || !edge.modes.length ||
         edge.modes.some(mode => !["walk", "bike", "car"].includes(mode))) throw new Error("Invalid road modes");
-    return { from: edge.from, to: edge.to, modes: [...new Set(edge.modes)] };
+    if (edge.oneWay !== undefined && typeof edge.oneWay !== "boolean") throw new Error("Invalid road direction");
+    return {
+      from: edge.from, to: edge.to, modes: [...new Set(edge.modes)],
+      ...(edge.oneWay ? { oneWay: true } : {})
+    };
   });
   const districtIds = new Set();
   const districts = input.districts.map(district => {
@@ -96,38 +101,101 @@ export function distance(atlas, a, b) {
   return Math.hypot((a.x - b.x) * atlas.kmAcross, (a.y - b.y) * atlas.kmAcross * atlas.height / atlas.width);
 }
 
+export function nearestRoad(atlas, target, mode) {
+  point(target);
+  const byId = new Map(atlas.nodes.map(node => [node.id, node]));
+  let best;
+  for (const [index, edge] of atlas.edges.entries()) {
+    if (!edge.modes.includes(mode)) continue;
+    const a = byId.get(edge.from), b = byId.get(edge.to);
+    const aspect = atlas.height / atlas.width;
+    const dx = b.x - a.x, dy = (b.y - a.y) * aspect;
+    const length = dx * dx + dy * dy;
+    const fraction = length ? Math.max(0, Math.min(1,
+      ((target.x - a.x) * dx + (target.y - a.y) * aspect * dy) / length)) : 0;
+    const projected = { x: a.x + fraction * dx, y: a.y + fraction * (b.y - a.y) };
+    const distanceKm = distance(atlas, target, projected);
+    if (!best || distanceKm < best.distanceKm) best = { ...projected, index, fraction, distanceKm };
+  }
+  return best;
+}
+
+export function roadAccess(atlas, target, mode) {
+  if (target.access !== undefined) {
+    if (!Array.isArray(target.access) || target.access.length < 2 || target.access.length > 100) {
+      throw new Error("invalidAccess");
+    }
+    const node = atlas.nodes.find(node => node.id === target.roadNode);
+    const points = target.access.map(point);
+    if (!node || distance(atlas, target, points[0]) > 1e-8 ||
+        distance(atlas, node, points.at(-1)) > 1e-8 ||
+        !atlas.edges.some(edge => edge.modes.includes(mode) && [edge.from, edge.to].includes(node.id))) {
+      throw new Error("invalidAccess");
+    }
+    return { node, points };
+  }
+  if (target.roadNode) {
+    const node = atlas.nodes.find(node => node.id === target.roadNode);
+    if (!node || !atlas.edges.some(edge => edge.modes.includes(mode) && [edge.from, edge.to].includes(node.id))) {
+      throw new Error("invalidAccess");
+    }
+    if (distance(atlas, target, node) > ROAD_SNAP_KM) throw new Error("unconnectedPlace");
+    return { node, points: [] };
+  }
+  const projection = nearestRoad(atlas, target, mode);
+  if (!projection) throw new Error("noRoads");
+  if (projection.distanceKm > ROAD_SNAP_KM) throw new Error("unconnectedPlace");
+  return { projection, points: [] };
+}
+
 export function findRoute(atlas, start, end, mode) {
   point(start);
   point(end);
   if (!Object.hasOwn(MODES, mode)) throw new Error("Invalid travel mode");
-  const finish = (roadPoints, accessKm) => {
-    const points = [point(start), ...roadPoints.map(point), point(end)];
+  const finish = (roadPoints, accessPaths = []) => {
+    const points = roadPoints.length
+      ? [...(accessPaths[0] ?? []), ...roadPoints.map(point), ...(accessPaths[1] ?? [])]
+      : [point(start), point(end)];
+    const pathLength = path => path.slice(1).reduce((sum, p, index) => sum + distance(atlas, path[index], p), 0);
+    const accessKm = accessPaths.reduce((sum, path) => sum + pathLength(path), 0);
     const distanceKm = points.slice(1).reduce((sum, p, index) => sum + distance(atlas, points[index], p), 0);
     const minutes = (distanceKm - accessKm) / MODES[mode] * 60 + accessKm / MODES.walk * 60;
-    return { points, roadPoints, distanceKm, minutes, accessKm, mode };
+    return { points, roadPoints, accessPaths, distanceKm, minutes, accessKm, mode };
   };
-  if (mode === "av" || (start.x === end.x && start.y === end.y)) return finish([], 0);
-  const links = new Map(atlas.nodes.map(node => [node.id, []]));
-  for (const edge of atlas.edges) {
-    if (!edge.modes.includes(mode)) continue;
-    links.get(edge.from).push(edge.to);
-    links.get(edge.to).push(edge.from);
-  }
-  const usable = atlas.nodes.filter(node => links.get(node.id).length);
-  if (!usable.length) throw new Error("noRoads");
-  const nearest = target => {
-    if (target.roadNode) {
-      const node = usable.find(node => node.id === target.roadNode);
-      if (!node) throw new Error("invalidAccess");
-      return node;
-    }
-    return usable.reduce((best, node) => distance(atlas, target, node) < distance(atlas, target, best) ? node : best);
-  };
-  const from = nearest(start), to = nearest(end);
+  if (mode === "av" || (start.x === end.x && start.y === end.y)) return finish([]);
+  if (!atlas.edges.some(edge => edge.modes.includes(mode))) throw new Error("noRoads");
+  const access = [roadAccess(atlas, start, mode), roadAccess(atlas, end, mode)];
   const byId = new Map(atlas.nodes.map(node => [node.id, node]));
+  const splits = new Map();
+  const endpoints = access.map((entry, index) => {
+    if (entry.node) return entry.node;
+    const projection = entry.projection;
+    const edge = atlas.edges[projection.index];
+    if (projection.fraction === 0) return byId.get(edge.from);
+    if (projection.fraction === 1) return byId.get(edge.to);
+    const node = { id: index ? "@destination" : "@origin", x: projection.x, y: projection.y };
+    byId.set(node.id, node);
+    if (!splits.has(projection.index)) splits.set(projection.index, []);
+    splits.get(projection.index).push({ node, fraction: projection.fraction });
+    return node;
+  });
+  const links = new Map([...byId.keys()].map(id => [id, []]));
+  for (const [index, edge] of atlas.edges.entries()) {
+    if (!edge.modes.includes(mode)) continue;
+    const segment = [
+      byId.get(edge.from),
+      ...(splits.get(index) ?? []).sort((a, b) => a.fraction - b.fraction).map(split => split.node),
+      byId.get(edge.to)
+    ];
+    for (let i = 1; i < segment.length; i++) {
+      links.get(segment[i - 1].id).push(segment[i].id);
+      if (!edge.oneWay) links.get(segment[i].id).push(segment[i - 1].id);
+    }
+  }
+  const [from, to] = endpoints;
   const costs = new Map([[from.id, 0]]);
   const previous = new Map();
-  const remaining = new Set(usable.map(node => node.id));
+  const remaining = new Set(links.keys());
   while (remaining.size) {
     let current;
     for (const id of remaining) {
@@ -147,5 +215,5 @@ export function findRoute(atlas, start, end, mode) {
   if (!costs.has(to.id)) throw new Error("noRoute");
   const path = [to.id];
   while (path[0] !== from.id) path.unshift(previous.get(path[0]));
-  return finish(path.map(id => byId.get(id)), distance(atlas, start, from) + distance(atlas, end, to));
+  return finish(path.map(id => byId.get(id)), [access[0].points, [...access[1].points].reverse()]);
 }

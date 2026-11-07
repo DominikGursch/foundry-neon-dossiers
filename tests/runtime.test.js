@@ -10,7 +10,7 @@ class Node {
     this.children = [];
     this.attributes = {};
     this.events = {};
-    this.style = {};
+    this.style = { setProperty(key, value) { this[key] = value; } };
     this.value = "";
     this.isConnected = true;
     this.clientWidth = this.clientHeight = this.scrollLeft = this.scrollTop = 0;
@@ -19,10 +19,11 @@ class Node {
   }
   setAttribute(key, value) { this.attributes[key] = value; if (key === "value") this.value = value; }
   removeAttribute(key) { delete this.attributes[key]; }
-  remove() {}
-  append(...children) { this.children.push(...children); }
+  remove() { this.isConnected = false; if (this.parentElement) this.parentElement.children = this.parentElement.children.filter(child => child !== this); }
+  append(...children) { for (const child of children) child.parentElement = this; this.children.push(...children); }
   replaceChildren(...children) { this.children = [...children]; }
   addEventListener(event, action) { (this.events[event] ??= []).push(action); }
+  getBoundingClientRect() { return { left: 0, top: 0, width: 1000, height: 800 }; }
   find(predicate) {
     if (predicate(this)) return this;
     for (const child of this.children) {
@@ -46,7 +47,13 @@ const settings = new Map([["mapImage", DEFAULT_MAP]]);
 const registered = new Map();
 const notifications = [];
 const en = JSON.parse(await readFile(new URL("../lang/en.json", import.meta.url))).ND;
-globalThis.document = { createElement: tag => new Node(tag), createElementNS: (_namespace, tag) => new Node(tag) };
+const documentEvents = new Map();
+globalThis.document = {
+  body: new Node("body"),
+  createElement: tag => new Node(tag), createElementNS: (_namespace, tag) => new Node(tag),
+  addEventListener: (name, action) => documentEvents.set(name, action),
+  removeEventListener: name => documentEvents.delete(name)
+};
 globalThis.Application = class {
   static get defaultOptions() { return {}; }
   render() { this.rendered = true; return this; }
@@ -54,7 +61,10 @@ globalThis.Application = class {
   async close() {}
 };
 globalThis.FormApplication = class extends Application {};
-globalThis.foundry = { utils: { mergeObject: (base, extra) => ({ ...base, ...extra }) } };
+globalThis.foundry = { utils: {
+  mergeObject: (base, extra) => ({ ...base, ...extra }),
+  randomID: () => crypto.randomUUID().replaceAll("-", "").slice(0, 16)
+} };
 globalThis.Hooks = {
   on: (name, action) => hooks.set(name, action),
   once: (name, action) => hooks.set(name, action)
@@ -137,13 +147,14 @@ const contains = (root, text) => Boolean(root.find(node => node.textContent.incl
 test("v12 lifecycle, GM CRUD, sharing and player revocation with mocked DOM/core", async () => {
   hooks.get("init")();
   assert.equal(registered.get("mapImage").scope, "world");
+  assert.equal(registered.get("mapImage").default, COMMUNITY_MAP);
+  assert.deepEqual(registered.get("atlas").default, {}, "unsaved presets must not shadow future road updates");
   assert.equal(registered.get("open").restricted, false);
   assert.ok(registered.get("open").type.prototype instanceof FormApplication);
-  new (registered.get("open").type)().render(true);
   const controls = [{ name: "notes", tools: [] }];
   hooks.get("getSceneControlButtons")(controls);
-  controls[0].tools[0].onClick();
-  assert.ok(module.api.open().rendered);
+  assert.equal(typeof controls[0].tools[0].onClick, "function");
+  assert.equal(typeof module.api.open, "function");
 
   const gm = newBoard();
   gm.draw();
@@ -241,12 +252,15 @@ test("GM note updates replace grants; a failed note save keeps the form and does
 
 test("districts and route origins respect visibility and drop revoked cached locations", async () => {
   game.user = { id: "gm", isGM: true };
-  const a = await JournalEntry.create({ name: "Start", ownership: { default: 2 }, flags: { [ID]: { place: EXAMPLES[0] } } });
-  const b = await JournalEntry.create({ name: "End", ownership: { default: 2 }, flags: { [ID]: { place: EXAMPLES[2] } } });
+  const atlas = presetAtlas(DEFAULT_MAP);
+  const start = { ...EXAMPLES[0], x: atlas.nodes[0].x, y: atlas.nodes[0].y };
+  const end = { ...EXAMPLES[2], x: atlas.nodes.at(-1).x, y: atlas.nodes.at(-1).y };
+  const a = await JournalEntry.create({ name: "Start", ownership: { default: 2 }, flags: { [ID]: { place: start } } });
+  const b = await JournalEntry.create({ name: "End", ownership: { default: 2 }, flags: { [ID]: { place: end } } });
   game.user = { id: "player", isGM: false };
   const board = newBoard();
   board.selected = b.id;
-  board.origin = { id: a.id, ...EXAMPLES[0] };
+  board.origin = { id: a.id, ...start };
   board.draw();
   assert.ok(board.root.find(node => node.className === "nd-route-summary"));
   const panel = board.root.find(node => node.className === "nd-panel");
@@ -327,4 +341,181 @@ test("zoom preserves an unsaved dossier draft; invalid map data fails visibly", 
   assert.ok(!contains(board.root, "Unsaved private note"));
   assert.equal(notifications.at(-1)[0], "error");
   await board.close();
+});
+
+test("GM draws mode-restricted roads and explicit access paths without editing JSON", async () => {
+  game.user = { id: "gm", isGM: true };
+  settings.delete("atlases");
+  const board = newBoard();
+  board.draw();
+  await findButton(board.root, en.drawRoad).fire("click");
+  await findButton(board.root, "r0c0").fire("click");
+  board.pickPoint({ x: 0.3, y: 0.2 });
+  board.pickPoint({ x: 0.4, y: 0.2 });
+  await findButton(board.root, en.undoPoint).fire("click");
+  const boxes = [];
+  const visit = node => { if (node.attributes.type === "checkbox") boxes.push(node); for (const child of node.children) visit(child); };
+  visit(board.root);
+  boxes[2].checked = false;
+  await boxes[2].fire("change");
+  await findButton(board.root, en.saveRoad).fire("click");
+  const atlas = settings.get("atlases")[DEFAULT_MAP];
+  assert.equal(atlas.nodes.length, presetAtlas(DEFAULT_MAP).nodes.length + 1);
+  assert.deepEqual(atlas.edges.at(-1).modes, ["walk", "bike"]);
+  assert.equal(board.roadDraft, null);
+
+  await findButton(board.root, en.addPlace).fire("click");
+  const title = board.root.querySelector("form").elements.namedItem("title");
+  title.value = "Traced place";
+  await title.fire("input");
+  board.pickPoint({ x: 0.25, y: 0.3 });
+  await findButton(board.root, en.traceAccess).fire("click");
+  board.pickPoint({ x: 0.22, y: 0.3 });
+  await findButton(board.root, "r0c0").fire("click");
+  assert.equal(board.tracingAccess, false);
+  assert.equal(board.editing.access.length, 3);
+  const form = board.root.querySelector("form");
+  assert.equal(form.elements.namedItem("roadNode").value, "r0c0");
+  await form.fire("submit");
+  const saved = game.journal.get(board.selected).flags[ID].place;
+  assert.equal(saved.title, "Traced place");
+  assert.equal(saved.roadNode, "r0c0");
+  assert.deepEqual(saved.access, [{ x: 0.25, y: 0.3 }, { x: 0.22, y: 0.3 }, { x: 0.18, y: 0.1875 }]);
+  await findButton(board.root, en.edit).fire("click");
+  assert.notEqual(board.editing.access, saved.access, "editing uses an isolated access draft");
+  const coordinate = board.root.querySelector("form").elements.namedItem("x");
+  coordinate.value = "0.3";
+  await coordinate.fire("input");
+  assert.equal(board.editing.access, undefined);
+  assert.equal(board.editing.roadNode, undefined);
+  assert.equal(board.root.querySelector("form").elements.namedItem("roadNode").value, "");
+  assert.equal(saved.access.length, 3, "unsaved movement cannot change the stored access path");
+  await board.close();
+  settings.delete("atlases");
+});
+
+test("scene HUD auto-mounts, follows the canvas, handles picks and drops revoked routes without journal windows", async () => {
+  game.user = { id: "gm", isGM: true };
+  const atlas = presetAtlas(DEFAULT_MAP);
+  const start = { ...EXAMPLES[0], x: atlas.nodes[0].x, y: atlas.nodes[0].y };
+  const end = { ...EXAMPLES[2], x: atlas.nodes.at(-1).x, y: atlas.nodes.at(-1).y };
+  const a = await JournalEntry.create({ name: "Canvas start", ownership: { default: 0, player: 2 },
+    flags: { [ID]: { place: start } } });
+  const b = await JournalEntry.create({ name: "Canvas end", ownership: { default: 2 },
+    flags: { [ID]: { place: end } } });
+  game.user = { id: "player", isGM: false };
+  const ticks = new Set(), pans = [];
+  globalThis.canvas = {
+    ready: true, scene: { getFlag: (_id, name) => name === "atlasScene", initial: { scale: 0.8 }, background: { src: DEFAULT_MAP } },
+    dimensions: { sceneX: 100, sceneY: 80, sceneWidth: 1000, sceneHeight: 800 },
+    app: { view: new Node("canvas"), ticker: { add: tick => ticks.add(tick), remove: tick => ticks.delete(tick) } },
+    stage: { scale: { x: 0.5 }, worldTransform: { a: 0.5, b: 0, c: 0, d: 0.5, tx: 30, ty: -20 } },
+    async animatePan(data) { pans.push(data); }
+  };
+  hooks.get("canvasReady")();
+  const board = await module.api.open({ placeId: b.id });
+  new (registered.get("open").type)().render(true);
+  assert.equal(board.sceneMode, true);
+  assert.equal(ticks.size, 1, "opening repeatedly does not add tickers");
+  assert.ok(board.mapElement.children.every(node => node.tag !== "img"), "native canvas background is not duplicated");
+  assert.equal(board.root.find(node => node.textContent === en.edit), null);
+  const origin = board.root.find(node => node.tag === "select" && node.attributes["aria-label"] === en.start);
+  origin.value = a.id;
+  await origin.fire("change");
+  assert.ok(board.routeSummary);
+  assert.ok(board.root.find(node => node.attributes["data-route-mode"] === "walk"));
+  canvas.stage.worldTransform.tx = 90;
+  for (const tick of ticks) tick();
+  assert.equal(board.mapElement.style.transform, "matrix(0.5,0,0,0.5,140,20)");
+  assert.equal(board.mapElement.style["--nd-inverse-scale"], "2");
+  await findButton(board.root, "+").fire("click");
+  assert.equal(pans.at(-1).scale, 0.625);
+  await findButton(board.root, en.pickStart).fire("click");
+  let intercepted = false;
+  documentEvents.get("pointerdown")({
+    button: 0, target: canvas.app.view, clientX: 240, clientY: 120,
+    preventDefault() {}, stopImmediatePropagation() { intercepted = true; }
+  });
+  assert.equal(intercepted, true);
+  assert.deepEqual(board.origin, { x: 0.2, y: 0.25 });
+  board.origin = { id: a.id, ...start };
+  board.draw();
+  a.ownership = { default: 0 };
+  hooks.get("updateJournalEntry")(a);
+  assert.equal(board.origin, null);
+  assert.equal(board.routeSummary, "");
+  const note = { document: { getFlag: () => a.id }, visible: true };
+  hooks.get("refreshNote")(note);
+  assert.equal(note.visible, false, "core icons are replaced by the HUD markers");
+  hooks.get("canvasTearDown")();
+  assert.equal(ticks.size, 0);
+  assert.equal(documentEvents.has("pointerdown"), false);
+  assert.equal(board.root, null);
+  canvas.scene.getFlag = () => false;
+  hooks.get("canvasReady")();
+  assert.equal(ticks.size, 0, "ordinary scenes do not get a HUD");
+  assert.equal(await module.api.open(), null, "players cannot create scenes or fall back to a journal window");
+  assert.equal(notifications.at(-1)[0], "warn");
+  canvas.scene.getFlag = () => true;
+  hooks.get("canvasReady")();
+  const reopened = await module.api.open();
+  assert.notEqual(reopened, board);
+  assert.equal(reopened.origin, null);
+  assert.equal(reopened.selected, null);
+  assert.equal(ticks.size, 1, "repeated scene loads do not accumulate listeners");
+  hooks.get("canvasTearDown")();
+  assert.equal(ticks.size, 0);
+  delete globalThis.canvas;
+});
+
+test("network review edits directions and requires explicit confirmation before replacing only this family's roads", async () => {
+  game.user = { id: "gm", isGM: true };
+  settings.set("mapImage", DEFAULT_MAP);
+  const customized = presetAtlas(DEFAULT_MAP);
+  customized.kmAcross = 17;
+  customized.districts[0].name = "Custom district";
+  customized.nodes.push({ id: "custom-node", x: 0.1, y: 0.1 });
+  settings.set("atlases", { [DEFAULT_MAP]: customized, [CITY_MAP]: { ...presetAtlas(CITY_MAP), kmAcross: 19 } });
+  const journalCount = game.journal.contents.length;
+  const board = newBoard();
+  board.draw();
+  await findButton(board.root, en.reviewNetwork).fire("click");
+  assert.ok(board.reviewing);
+  assert.ok(contains(board.root, en.components));
+  const firstLine = () => board.root.find(node => node.attributes.class?.startsWith("nd-road-review"));
+  await firstLine().fire("click");
+  const boxes = [];
+  const visit = node => { if (node.attributes.type === "checkbox") boxes.push(node); for (const child of node.children) visit(child); };
+  visit(board.root);
+  assert.equal(boxes.length, 4);
+  boxes[1].checked = false;
+  await boxes[1].fire("change");
+  boxes[3].checked = true;
+  await findButton(board.root, en.saveRoad).fire("click");
+  const saved = settings.get("atlases")[DEFAULT_MAP];
+  assert.equal(saved.edges[0].oneWay, true);
+  assert.deepEqual(saved.edges[0].modes, ["walk", "car"]);
+  const originalConfirm = Dialog.confirm;
+  Dialog.confirm = async () => false;
+  await findButton(board.root, en.loadPresetRoads).fire("click");
+  assert.equal(settings.get("atlases")[DEFAULT_MAP], saved, "cancel leaves custom data untouched");
+  Dialog.confirm = async () => true;
+  try { await findButton(board.root, en.loadPresetRoads).fire("click"); }
+  finally { Dialog.confirm = originalConfirm; }
+  const updated = settings.get("atlases")[DEFAULT_MAP];
+  assert.equal(updated.kmAcross, 17);
+  assert.equal(updated.districts[0].name, "Custom district");
+  assert.deepEqual(updated.nodes, presetAtlas(DEFAULT_MAP).nodes);
+  assert.deepEqual(updated.edges, presetAtlas(DEFAULT_MAP).edges);
+  assert.equal(settings.get("atlases")[CITY_MAP].kmAcross, 19);
+  assert.equal(game.journal.contents.length, journalCount, "loading a street preset must never seed places");
+  await firstLine().fire("keydown", { key: "Enter" });
+  const count = updated.edges.length;
+  await findButton(board.root, en.deleteRoad).fire("click");
+  assert.equal(settings.get("atlases")[DEFAULT_MAP].edges.length, count - 1);
+  game.user = { id: "player", isGM: false };
+  board.draw();
+  assert.equal(board.root.find(node => node.textContent === en.reviewNetwork), null);
+  await board.close();
+  settings.delete("atlases");
 });

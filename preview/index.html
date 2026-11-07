@@ -19,12 +19,9 @@
     / Browser preview, not a Foundry server. Map scale, threat ratings and partial road networks are campaign approximations.
     <a href="THIRD_PARTY_NOTICES.md">Quellen / Credits</a> ·
     <a href="docs/GITHUB_PAGES_DE.md">GitHub-Pages-Anleitung</a></p>
-  <main class="neon-dossiers"><div class="window-content"><div class="nd-root"></div></div></main>
-  <section id="scene-preview" hidden aria-label="Scene preview">
-    <h2>Foundry scene adapter preview</h2>
-    <p>Nur Simulation der Szenennotizen; keine Foundry-Engine. / Simulates scene notes, not the Foundry engine.</p>
-    <div id="scene-map"></div>
-  </section>
+  <main class="preview-stage" aria-label="Simulierte Kartenszene / Simulated map scene">
+    <canvas id="preview-canvas" aria-label="Kartenhintergrund / Map background"></canvas>
+  </main>
   <div id="notifications" role="status" aria-live="polite"></div>
   <script type="module" src="preview.js"></script>
 </body>

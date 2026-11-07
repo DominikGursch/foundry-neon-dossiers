@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { atlasData, DEFAULT_ATLAS, emptyAtlas, findRoute, distance } from "../scripts/atlas.js";
+import { atlasData, DEFAULT_ATLAS, emptyAtlas, findRoute, distance, ROAD_SNAP_KM } from "../scripts/atlas.js";
 import { DEFAULT_MAP, EXAMPLES } from "../scripts/model.js";
 
 const map = () => atlasData({
@@ -26,6 +26,7 @@ test("atlas round-trip, bounded schema and demo provenance", () => {
     { edges: [{ from: "a", to: "missing", modes: ["walk"] }] },
     { edges: [{ from: "a", to: "a", modes: ["walk"] }] },
     { edges: [{ from: "a", to: "b", modes: ["av"] }] },
+    { edges: [{ from: "a", to: "b", modes: ["walk"], oneWay: "yes" }] },
     { districts: [{ ...DEFAULT_ATLAS.districts[0], threat: "unknown" }] },
     { districts: [{ ...DEFAULT_ATLAS.districts[0], polygon: [] }] },
     { image: "../map.svg" }
@@ -57,14 +58,46 @@ test("Dijkstra selects a shorter alternate path, not the first discovered path",
   assert.equal(route.distanceKm, 8);
 });
 
+test("one-way roads preserve direction at snapped endpoints, including a terminal destination", () => {
+  const atlas = atlasData({ ...map(), edges: [{ from: "a", to: "d", modes: ["car"], oneWay: true }] });
+  assert.equal(atlas.edges[0].oneWay, true);
+  assert.equal(findRoute(atlas, atlas.nodes[0], atlas.nodes[3], "car").distanceKm, 8);
+  assert.throws(() => findRoute(atlas, atlas.nodes[3], atlas.nodes[0], "car"), /noRoute/);
+  const start = { x: 0.3, y: 0.1 }, end = { x: 0.6, y: 0.1 };
+  assert.ok(Math.abs(findRoute(atlas, start, end, "car").distanceKm - 3) < 1e-10);
+  assert.throws(() => findRoute(atlas, end, start, "car"), /noRoute/);
+  assert.throws(() => findRoute(atlas, start, end, "bike"), /noRoads/);
+});
+
 test("access is explicit, included in total distance and walked even when driving", () => {
   const atlas = map();
   const start = { x: 0, y: 0.1, roadNode: "a" }, end = { x: 1, y: 0.1, roadNode: "d" };
+  assert.throws(() => findRoute(atlas, start, end, "car"), /unconnectedPlace/);
+  start.access = [{ x: start.x, y: start.y }, atlas.nodes[0]];
+  end.access = [{ x: end.x, y: end.y }, atlas.nodes[3]];
   const route = findRoute(atlas, start, end, "car");
   assert.ok(Math.abs(route.accessKm - 2) < 1e-10);
   assert.equal(route.distanceKm, 18);
   assert.ok(Math.abs(route.minutes - (16 / 35 * 60 + 24)) < 1e-10);
   assert.throws(() => findRoute(atlas, { ...start, roadNode: "missing" }, end, "car"), /invalidAccess/);
+  assert.throws(() => findRoute(atlas, { ...start, access: [atlas.nodes[1], atlas.nodes[0]] }, end, "car"), /invalidAccess/);
+  assert.throws(() => findRoute(atlas, { ...start, access: [start, atlas.nodes[1]] }, end, "car"), /invalidAccess/);
+  assert.equal(route.accessPaths.length, 2);
+});
+
+test("ground endpoints snap to nearby street segments, including the same edge, never to distant nodes", () => {
+  const atlas = map();
+  const start = { x: 0.1, y: 0.3 }, end = { x: 0.1, y: 0.6 };
+  const route = findRoute(atlas, start, end, "car");
+  assert.ok(Math.abs(route.distanceKm - 1.5) < 1e-10, "no detour to an end node on the same road");
+  assert.equal(route.accessKm, 0);
+  assert.deepEqual(route.accessPaths, [[], []]);
+  const near = { x: start.x + ROAD_SNAP_KM / atlas.kmAcross * 0.99, y: start.y };
+  assert.equal(findRoute(atlas, near, end, "car").accessKm, 0, "nearby positions snap, no invented connector");
+  const far = { ...near, x: start.x + ROAD_SNAP_KM / atlas.kmAcross * 1.01 };
+  assert.throws(() => findRoute(atlas, far, end, "car"), /unconnectedPlace/);
+  assert.throws(() => findRoute(atlas, { x: 0.5, y: 0.3 }, end, "walk"), /unconnectedPlace/);
+  assert.equal(findRoute(atlas, { x: 0.5, y: 0.3 }, end, "av").accessKm, 0);
 });
 
 test("missing and disconnected roads never produce a success-shaped straight-line route", () => {

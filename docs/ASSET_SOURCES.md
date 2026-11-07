@@ -134,8 +134,27 @@ The preset horizontal spans (Atlas: 12 km; cropped community: approximately
 12.54 km, computed as 18×2519/3615 to preserve the earlier full-image scale)
 are campaign assumptions, not a canonical geographic scale. The Atlas itself explains on
 p. 3 that Night City is not assigned fixed dimensions.
-Roads cover a selection of central arterials and bridges, not every street.
-Endpoint-to-road access is approximate and separately marked in amber.
+Roads cover a selection of streets and bridges, not every street.
+`scripts/community-roads.js` expands this specific marker-free image's
+network to 696 nodes and 995 segments, including local streets in Watson,
+Little Europe/University, South Night City, City Center/Bank Block/Med Center,
+the Glen/Japantown, Westbrook, mainland Heywood, Rancho Coronado and Pacifica.
+Street bends and intersections were read from enlarged local image crops;
+overlaid lines and a water-color heuristic were used as review aids, not
+as an authoritative obstacle detector. Explicit at-grade junction decisions
+split reviewed crossing segments; unreviewed crossings are never joined
+automatically. Northern/southern bridge alignments and legacy street anchors
+were corrected against this image, independently of unchanged POI positions.
+The Lake Park paths permit walking/cycling only as a campaign assumption.
+Other included roads default to bidirectional walking/cycling/driving:
+the source image does not establish traffic rules or access permissions.
+Morro Rock and Executive Zone interiors and many minor streets remain
+unmapped. The data are hand-positioned campaign approximations, **not an
+exhaustive street survey or a claim that every visible way was recognized**.
+No bundled image or district/POI coordinate was changed for this extension.
+Endpoints only snap within 20 m of a mapped street. Longer access paths must
+be traced explicitly by the GM and are separately marked in amber; legacy
+POI anchors and their road-node assignments do not certify a walkable entrance.
 Neither card descriptions nor routing replaces the original books.
 
 `scripts/atlas.js` and the Harbor Grid starter prose retain their original

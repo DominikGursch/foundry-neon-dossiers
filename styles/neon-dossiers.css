@@ -54,6 +54,19 @@
 .neon-dossiers .nd-active-zone { fill: #ff4655; fill-opacity: .15; stroke: #ff6a77; stroke-width: 5; stroke-dasharray: 16 10; }
 .neon-dossiers .nd-route-line { fill: none; stroke: var(--nd-cyan); stroke-width: 8; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 0 3px #000); }
 .neon-dossiers .nd-route-access { stroke: #f5bb69; stroke-dasharray: 18 12; stroke-width: 5; }
+.neon-dossiers .nd-route-flight { stroke: #c998ff; stroke-dasharray: 12 12; }
+.neon-dossiers [data-route-mode="bike"] .nd-route-line:not(.nd-route-access) { stroke: #96dfb0; }
+.neon-dossiers [data-route-mode="car"] .nd-route-line:not(.nd-route-access) { stroke: #7ab6ff; }
+.neon-dossiers .nd-road-guide { fill: none; stroke: #ff6571; stroke-width: 3; stroke-opacity: .8; }
+.neon-dossiers .nd-draft-point { fill: #ff6571; stroke: #08090d; stroke-width: 2; }
+.neon-dossiers .nd-road-node { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; font-size: 0; padding: 0; width: 12px; height: 12px; min-height: 12px; border: 1px solid #08090d; background: var(--nd-red); }
+.neon-dossiers .nd-road-node:is(:hover,:focus-visible)::after { content: attr(title); position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); font-size: 10px; white-space: nowrap; padding: 3px 6px; color: var(--nd-ink); background: var(--nd-bg); border: 1px solid var(--nd-red); pointer-events: none; }
+.neon-dossiers .nd-mode-choice { display: flex; align-items: center; gap: 8px; }
+.neon-dossiers .nd-mode-choice input { width: auto; min-height: 0; }
+.neon-dossiers .nd-road-review { fill: none; stroke-width: 5; pointer-events: stroke; cursor: pointer; }
+.neon-dossiers .nd-road-review:is(:hover,:focus-visible,.nd-road-selected) { stroke: #fff; stroke-width: 9; }
+.neon-dossiers .nd-network-end { fill: #f5bb69; stroke: #08090d; stroke-width: 1; pointer-events: none; }
+.neon-dossiers .nd-network-crossing { fill: none; stroke: #ff4655; stroke-width: 2; pointer-events: none; }
 .neon-dossiers .nd-origin { fill: #08090d; stroke: var(--nd-cyan); stroke-width: 7; r: 15; }
 .neon-dossiers .nd-markers { position: absolute; inset: 0; pointer-events: none; }
 .neon-dossiers .nd-marker { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; width: 28px; min-height: 28px; height: 28px; padding: 0; border: 2px solid var(--nd-category); color: #08090d; background: var(--nd-category); font: 800 10px/24px ui-monospace, Consolas, monospace; border-radius: 50%; box-shadow: 0 2px 6px #000b; z-index: 1; }
@@ -119,4 +132,22 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .neon-dossiers *, .neon-dossiers *::before, .neon-dossiers *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+.nd-scene-hud { position: fixed; inset: 64px 320px 50px 110px; z-index: 30; pointer-events: none; color: var(--nd-ink); font: 13px/1.5 "Segoe UI", sans-serif; }
+.nd-scene-hud :is(.nd-heading,.nd-tools,.nd-categories,.nd-sidebar,.nd-panel,.nd-map-controls,.nd-statusbar) { pointer-events: auto; }
+.nd-scene-hud .nd-heading { padding: 6px 12px; }
+.nd-scene-hud .nd-wordmark > strong { font-size: 18px; }
+.nd-scene-hud .nd-tools, .nd-scene-hud .nd-categories { padding: 5px 10px; }
+.nd-scene-hud .nd-layout { background: transparent; }
+.nd-scene-hud .nd-map-scroll { display: block; overflow: hidden; pointer-events: none; }
+.nd-scene-hud .nd-map { position: absolute; left: 0; top: 0; margin: 0; transform-origin: 0 0; }
+.nd-scene-hud :is(.nd-marker,.nd-road-node) { transform: translate(-50%, -50%) scale(var(--nd-inverse-scale, 1)); }
+.nd-scene-hud :is(.nd-route-line,.nd-road-guide,.nd-district-zone) { vector-effect: non-scaling-stroke; stroke-width: 3; }
+.nd-scene-hud .nd-route-access { stroke-width: 2; stroke-dasharray: 8 6; }
+.nd-scene-hud .nd-road-guide { stroke-width: 1.5; }
+.nd-scene-hud .nd-road-review { vector-effect: non-scaling-stroke; stroke-width: 3; }
+.nd-scene-hud .nd-road-review:is(:hover,:focus-visible,.nd-road-selected) { stroke-width: 6; }
+@media (max-width: 1000px) {
+  .nd-scene-hud { left: 80px; right: 12px; top: 64px; }
+  .nd-scene-hud .nd-connection { display: none; }
 }

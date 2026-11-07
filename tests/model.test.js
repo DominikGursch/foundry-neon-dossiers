@@ -56,6 +56,23 @@ test("permission gate runs before reading flags and revocation removes cached do
   assert.deepEqual(readablePlaces([entry, hidden], {}), []);
 });
 
+test("traced access is bounded public geometry, copied without unrecognized data", () => {
+  const place = { ...EXAMPLES[0], roadNode: "junction", access: [
+    { x: EXAMPLES[0].x, y: EXAMPLES[0].y, notes: "discard" }, { x: 0.41, y: 0.45 }
+  ] };
+  const clean = placeData(place);
+  assert.deepEqual(clean.access, [{ x: 0.3, y: 0.32 }, { x: 0.41, y: 0.45 }]);
+  clean.access[0].x = 0;
+  assert.equal(place.access[0].x, 0.3, "the validated copy cannot mutate stored geometry");
+  for (const update of [
+    { roadNode: "" }, { access: [] }, { access: [place.access[0]] },
+    { access: Array(101).fill(place.access[0]) },
+    { access: [{ x: 0.2, y: 0.3 }, { x: 0.41, y: 0.45 }] },
+    { access: [place.access[0], { x: NaN, y: 0.45 }] },
+    { access: [place.access[0], { x: 0.41, y: 2 }] }
+  ]) assert.throws(() => placeData({ ...place, ...update }));
+});
+
 test("malformed accessible documents are reported and search respects categories", () => {
   let reported = 0;
   const bad = { id: "bad", testUserPermission: () => true, getFlag: () => ({}) };

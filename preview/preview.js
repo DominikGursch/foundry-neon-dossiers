@@ -1,11 +1,10 @@
-import { ID, CITY_MAP } from "./modules/neon-dossiers/scripts/model.js";
-import { NIGHT_CITY_ATLAS, CITY_EXAMPLES, MAP_PRESETS } from "./modules/neon-dossiers/scripts/city.js";
+import { ID, COMMUNITY_MAP } from "./modules/neon-dossiers/scripts/model.js";
+import { MAP_PRESETS } from "./modules/neon-dossiers/scripts/city.js";
 
 // Only this adapter is simulated. The actual module, renderer and routing code are shared.
 const storageKey = "neon-dossiers-preview-v2";
 const hooks = new Map();
 const translations = {};
-let board;
 let language = "de";
 const notify = (kind, message) => {
   const node = document.createElement("p");
@@ -21,7 +20,7 @@ const save = () => {
     journals: game.journal.contents.map(({ id, name, ownership, flags }) => ({ id, name, ownership, flags }))
   }));
 };
-const settings = new Map([["mapImage", CITY_MAP], ["atlas", structuredClone(NIGHT_CITY_ATLAS)]]);
+const settings = new Map([["mapImage", COMMUNITY_MAP]]);
 const configs = new Map();
 
 function journal(data) {
@@ -57,16 +56,14 @@ Object.assign(globalThis, {
     static get defaultOptions() { return {}; }
     activateListeners() {}
     render() {
-      if (board && board !== this) board.close();
-      board = this;
-      this.rendered = true;
-      this.root = document.querySelector(".nd-root");
-      this.draw();
-      return this;
+      throw new Error("The demo uses the scene HUD, not application windows.");
     }
     async close() { this.rendered = false; }
   },
-  foundry: { utils: { mergeObject: (base, extra) => ({ ...base, ...extra }) } },
+  foundry: { utils: {
+    mergeObject: (base, extra) => ({ ...base, ...extra }),
+    randomID: () => crypto.randomUUID().replaceAll("-", "").slice(0, 16)
+  } },
   CONST: { DOCUMENT_OWNERSHIP_LEVELS: { OBSERVER: 2 } },
   ui: { notifications: Object.fromEntries(["info", "warn", "error"].map(kind => [kind, message => notify(kind, message)])) },
   game: {
@@ -129,44 +126,97 @@ Object.assign(globalThis, {
 });
 globalThis.FormApplication = class extends Application {};
 
-function renderScene(scene) {
-  const container = document.querySelector("#scene-map");
-  container.replaceChildren();
-  const image = document.createElement("img");
-  image.src = scene.background.src;
-  image.alt = "Scene map preview";
-  container.append(image);
-  for (const note of scene.notes.contents) {
-    if (!game.journal.get(note.entryId)?.testUserPermission(game.user)) continue;
-    const marker = document.createElement("button");
-    marker.textContent = note.text;
-    marker.style.left = `${note.x / scene.width * 100}%`;
-    marker.style.top = `${note.y / scene.height * 100}%`;
-    marker.addEventListener("click", () => game.modules.get(ID).api.open({ placeId: note.entryId }));
-    container.append(marker);
+const view = document.querySelector("#preview-canvas");
+const context = view.getContext("2d");
+const ticks = new Set();
+let background;
+globalThis.canvas = {
+  ready: false, scene: null, notes: { placeables: [] },
+  app: { view, ticker: { add: action => ticks.add(action), remove: action => ticks.delete(action) } },
+  stage: { scale: { x: 1 }, worldTransform: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 } },
+  async animatePan({ x, y, scale = this.stage.scale.x }) {
+    const matrix = this.stage.worldTransform;
+    const rect = view.getBoundingClientRect();
+    x ??= (rect.width / 2 - matrix.tx) / matrix.a;
+    y ??= (rect.height / 2 - matrix.ty) / matrix.d;
+    scale = Math.max(0.1, Math.min(4, scale));
+    Object.assign(matrix, { a: scale, d: scale, tx: rect.width / 2 - x * scale, ty: rect.height / 2 - y * scale });
+    this.stage.scale.x = scale;
   }
+};
+
+async function showScene(scene) {
+  fire("canvasTearDown");
+  canvas.ready = false;
+  background = new Image();
+  background.src = scene.background.src;
+  await background.decode();
+  canvas.scene = scene;
+  canvas.dimensions = { sceneX: 0, sceneY: 0, sceneWidth: scene.width, sceneHeight: scene.height };
+  const rect = view.getBoundingClientRect();
+  const scale = Math.min(rect.width / scene.width, rect.height / scene.height) * 1.5;
+  scene.initial = { scale };
+  await canvas.animatePan({ x: scene.width / 2, y: scene.height * 0.55, scale });
+  canvas.ready = true;
+  fire("canvasReady");
 }
+
+function frame() {
+  const rect = view.getBoundingClientRect();
+  const ratio = devicePixelRatio;
+  if (view.width !== Math.round(rect.width * ratio) || view.height !== Math.round(rect.height * ratio)) {
+    view.width = Math.round(rect.width * ratio); view.height = Math.round(rect.height * ratio);
+  }
+  context.resetTransform();
+  context.clearRect(0, 0, view.width, view.height);
+  if (canvas.ready) {
+    const { a, b, c, d, tx, ty } = canvas.stage.worldTransform;
+    context.setTransform(a * ratio, b * ratio, c * ratio, d * ratio, tx * ratio, ty * ratio);
+    context.drawImage(background, 0, 0, canvas.scene.width, canvas.scene.height);
+    for (const tick of ticks) tick();
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+let drag;
+view.addEventListener("pointerdown", event => {
+  if (event.button !== 0) return;
+  const { tx, ty } = canvas.stage.worldTransform;
+  drag = { x: event.clientX, y: event.clientY, tx, ty };
+  view.setPointerCapture(event.pointerId);
+});
+view.addEventListener("pointermove", event => {
+  if (!drag) return;
+  canvas.stage.worldTransform.tx = drag.tx + event.clientX - drag.x;
+  canvas.stage.worldTransform.ty = drag.ty + event.clientY - drag.y;
+});
+for (const name of ["pointerup", "pointercancel"]) view.addEventListener(name, () => { drag = null; });
+view.addEventListener("wheel", event => {
+  event.preventDefault();
+  canvas.animatePan({ scale: canvas.stage.scale.x * (event.deltaY < 0 ? 1.15 : 1 / 1.15) });
+}, { passive: false });
 
 globalThis.Scene = {
   async create(data) {
     const scene = {
-      ...data, notes: { contents: [] },
+      ...data, id: crypto.randomUUID(), notes: { contents: [] },
       getFlag(namespace, key) { return this.flags?.[namespace]?.[key]; },
-      async update(data) { Object.assign(this, data); renderScene(this); },
+      async update(data) {
+        const changed = this.background.src !== data.background.src || this.width !== data.width || this.height !== data.height;
+        Object.assign(this, data);
+        if (changed && canvas.scene === this) await showScene(this);
+      },
       async createEmbeddedDocuments(_type, data) {
         this.notes.contents.push(...data.map(note => ({ ...note, id: crypto.randomUUID(), getFlag(namespace, key) { return this.flags[namespace][key]; } })));
-        renderScene(this);
       },
       async updateEmbeddedDocuments(_type, data) {
         for (const item of data) Object.assign(this.notes.contents.find(note => note.id === item._id), item);
-        renderScene(this);
       },
       async deleteEmbeddedDocuments(_type, ids) {
-        this.notes.contents = this.notes.contents.filter(note => !ids.includes(note.id)); renderScene(this);
+        this.notes.contents = this.notes.contents.filter(note => !ids.includes(note.id));
       },
       async view() {
-        document.querySelector("#scene-preview").hidden = false;
-        renderScene(this); document.querySelector("#scene-preview").scrollIntoView({ behavior: "smooth" });
+        await showScene(this);
       }
     };
     game.scenes.contents.push(scene); return scene;
@@ -185,27 +235,19 @@ async function main() {
     for (const [key, data] of Object.entries(value.settings)) settings.set(key, data);
     game.journal.contents = value.journals.map(journal);
   } else {
-    game.journal.contents = CITY_EXAMPLES.map((place, index) => journal({
-      id: `example-${index}`, name: place.title, ownership: { default: 2 },
-      flags: { [ID]: { place, example: `${CITY_MAP}:${index}` } }
-    }));
-    game.journal.contents.push(journal({
-      id: "private-place", name: "Unlisted safehouse", ownership: { default: 0 },
-      flags: { [ID]: { place: { title: "Unlisted safehouse", category: "mystery", description: "Private demo POI. Share it as GM, then switch to Player to see it appear.", image: "", x: 0.44, y: 0.53, district: "the-glen", mapImage: CITY_MAP } } }
-    }));
     save();
   }
   await import(`./modules/${ID}/scripts/module.js`);
   fire("init");
-  game.modules.get(ID).api.open();
+  await game.modules.get(ID).api.open();
   fire("ready");
   document.querySelector("#role").addEventListener("change", event => {
     game.user = { id: event.target.value, isGM: event.target.value === "gm" };
     fire("updateUser", game.user);
-    for (const scene of game.scenes.contents) renderScene(scene);
   });
   document.querySelector("#language").addEventListener("change", event => {
-    language = event.target.value; document.documentElement.lang = language; board.draw();
+    language = event.target.value; document.documentElement.lang = language;
+    game.modules.get(ID).api.open().catch(error => notify("error", error.message));
   });
 }
 

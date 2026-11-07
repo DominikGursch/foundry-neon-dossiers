@@ -1,9 +1,9 @@
-import { ID, CITY_MAP, readablePlaces, placesOnMap, mapFamily } from "./model.js";
+import { ID, COMMUNITY_MAP, readablePlaces, placesOnMap, mapFamily } from "./model.js";
 import { atlasData, emptyAtlas } from "./atlas.js";
 import { presetAtlas } from "./city.js";
 
 export function currentAtlas() {
-  const image = game.settings.get(ID, "mapImage") ?? CITY_MAP;
+  const image = game.settings.get(ID, "mapImage") ?? COMMUNITY_MAP;
   const stored = game.settings.get(ID, "atlases")?.[mapFamily(image)] ?? game.settings.get(ID, "atlas");
   // Never apply the demo's roads or geography to a replacement image.
   return atlasData(stored && mapFamily(stored.image) === mapFamily(image)

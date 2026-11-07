@@ -48,6 +48,18 @@ export function placeData(input) {
       optional[key] = input[key];
     }
   }
+  if (input.access !== undefined) {
+    if (!Array.isArray(input.access) || input.access.length < 2 || input.access.length > 100 || !optional.roadNode) {
+      throw new Error("A traced access path needs 2-100 points and a road node");
+    }
+    optional.access = input.access.map(p => {
+      if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y) || p.x < 0 || p.x > 1 || p.y < 0 || p.y > 1) {
+        throw new Error("Invalid access coordinates");
+      }
+      return { x: p.x, y: p.y };
+    });
+    if (optional.access[0].x !== x || optional.access[0].y !== y) throw new Error("Access must start at the place");
+  }
   return {
     title: boundedText(input.title, 100, true),
     category,

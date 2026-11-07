@@ -4,6 +4,7 @@ import { MAP_PRESETS, starterPlaces, ATLAS_SOURCE, presetAtlas } from "./city.js
 import { currentAtlas, synchronizeScene } from "./scene.js";
 import { sceneTransform, scenePoint } from "./canvas.js";
 import { inspectNetwork } from "./network.js";
+import { RoadDraft } from "./road-draft.js";
 
 const t = key => game.i18n.localize(`ND.${key}`);
 const windows = new Set();
@@ -109,6 +110,7 @@ export class DossierBoard extends Application {
     this.tracingAccess = false;
     this.reviewing = false;
     this.reviewMode = "car";
+    this.networkDraft = null;
     this.zoom = 1;
     this.sidebarOpen = false;
     windows.add(this);
@@ -174,8 +176,8 @@ export class DossierBoard extends Application {
       ui.notifications.error(t("imageError"));
     }, { once: true });
     if (!this.sceneMode) map.append(picture);
-    const overlay = svg("svg", { class: "nd-overlay", viewBox: `0 0 ${atlas.width} ${atlas.height}`, preserveAspectRatio: "none", "aria-hidden": "true" });
-    for (const district of atlas.districts) {
+    const overlay = svg("svg", { class: "nd-overlay", viewBox: `0 0 ${atlas.width} ${atlas.height}`, preserveAspectRatio: "none" });
+    for (const district of (this.configuring && this.atlasDraft ? this.atlasDraft.districts : atlas.districts)) {
       overlay.append(svg("polygon", {
         points: district.polygon.map(p => `${p.x * atlas.width},${p.y * atlas.height}`).join(" "),
         class: `nd-district-zone nd-threat-${district.threat}${this.district === district.id ? " nd-active-zone" : ""}`
@@ -190,7 +192,7 @@ export class DossierBoard extends Application {
       if (!results.length) list.append(element("p", { text: t("noPlaces") }));
       for (const place of results) {
         const select = () => {
-          if (this.editing || this.roadDraft) return;
+          if (this.editing || this.roadDraft || this.networkDraft) return;
           this.configuring = false; this.reviewing = false; this.sidebarOpen = false; this.selected = place.id; this.draw();
         };
         const index = String(places.indexOf(place) + 1).padStart(2, "0");
@@ -215,6 +217,7 @@ export class DossierBoard extends Application {
     districts.append(element("option", { value: "", text: t("allDistricts") }));
     for (const district of atlas.districts) districts.append(element("option", { value: district.id, text: district.name }));
     districts.value = this.district;
+    districts.disabled = Boolean(this.networkDraft);
     districts.addEventListener("change", () => {
       this.district = districts.value;
       this.selected = null;
@@ -227,6 +230,7 @@ export class DossierBoard extends Application {
       this.draw();
     });
     const toggle = button(t("navigationPlaces"), () => { this.sidebarOpen = !this.sidebarOpen; this.draw(); });
+    toggle.disabled = Boolean(this.networkDraft);
     toggle.setAttribute("aria-expanded", String(this.sidebarOpen));
     const tools = element("div", { class: "nd-tools" }, search, districts, toggle);
     if (game.user.isGM) {
@@ -236,6 +240,7 @@ export class DossierBoard extends Application {
         mapChoice.append(element("option", { value: atlas.image, text: t("customMap") }));
       }
       mapChoice.value = atlas.image;
+      mapChoice.disabled = Boolean(this.networkDraft);
       mapChoice.addEventListener("change", () => {
         Promise.resolve().then(() => { requireGM(); return game.settings.set(ID, "mapImage", mapChoice.value); }).catch(report);
       });
@@ -271,27 +276,34 @@ export class DossierBoard extends Application {
         this.editing = null;
         this.reviewing = false;
         this.roadDraft = null;
+        this.pickingOrigin = false;
+        this.districtEditing = ""; this.districtDrawing = false;
         this.atlasDraft = null;
         this.configuring = true;
         this.draw();
-      }), button(t("drawRoad"), () => {
+      }), button(t("editNetwork"), () => {
         this.editing = null;
         this.configuring = false;
         this.reviewing = false;
-        this.roadDraft = { points: [], modes: ["walk", "bike", "car"] };
+        this.networkDraft = new RoadDraft(atlas);
+        this.networkOriginal = JSON.stringify(atlas);
+        this.networkSelection = null;
+        this.networkTool = "select";
+        this.networkLastNode = null;
+        this.pickingOrigin = false;
+        this.sidebarOpen = false;
         this.draw();
-      }), button(t("reviewNetwork"), () => {
-        this.editing = null; this.configuring = false; this.roadDraft = null; this.tracingAccess = false;
-        this.reviewing = true; this.reviewEdge = null; this.draw();
       }), button(t("scene"), async () => {
         requireGM();
         const scene = await synchronizeScene(true);
         await scene.view();
         ui.notifications.info(t("sceneReady"));
       }));
+      if (this.networkDraft) for (const action of gmActions.children) action.disabled = true;
     }
     const panel = element("section", { class: "nd-panel", "aria-label": t("dossier") });
     const closePanel = button(t("closePanel"), () => {
+      if (this.networkDraft) return this.cancelNetwork();
       this.selected = null; this.district = ""; this.editing = null; this.configuring = false;
       this.reviewing = false;
       this.roadDraft = null; this.tracingAccess = false;
@@ -304,15 +316,18 @@ export class DossierBoard extends Application {
     origin.append(element("option", { value: "", text: this.origin && !this.origin.id ? t("mapStart") : t("chooseStart") }));
     for (const place of places) origin.append(element("option", { value: place.id, text: place.title }));
     origin.value = this.origin?.id ?? "";
+    origin.disabled = Boolean(this.networkDraft);
     origin.addEventListener("change", () => { this.origin = places.find(place => place.id === origin.value) ?? null; this.draw(); });
     const mode = element("select", { "aria-label": t("travelMode") });
     for (const key of Object.keys(MODES)) mode.append(element("option", { value: key, text: t(key) }));
     mode.value = this.mode;
+    mode.disabled = Boolean(this.networkDraft);
     mode.addEventListener("change", () => { this.mode = mode.value; this.draw(); });
     const destination = element("select", { "aria-label": t("destination") });
     destination.append(element("option", { value: "", text: t("chooseDestination") }));
     for (const place of places) destination.append(element("option", { value: place.id, text: place.title }));
     destination.value = this.selected ?? "";
+    destination.disabled = Boolean(this.networkDraft);
     destination.addEventListener("change", () => {
       this.selected = destination.value || null;
       this.editing = null; this.configuring = false; this.roadDraft = null; this.tracingAccess = false;
@@ -329,7 +344,7 @@ export class DossierBoard extends Application {
     }
     this.routeSummary = "";
     this.routeError = "";
-    if (this.origin && selected && !this.editing && !this.roadDraft && !this.configuring && !this.reviewing) {
+    if (this.origin && selected && !this.editing && !this.roadDraft && !this.configuring && !this.reviewing && !this.networkDraft) {
       this.drawRoute(routeControls, overlay, atlas, selected);
     }
     const sidebar = element("nav", { class: "nd-sidebar", "aria-label": t("navigationPlaces") }, routeControls,
@@ -360,9 +375,10 @@ export class DossierBoard extends Application {
       mapScroll, sidebar, panel, zoom),
     element("footer", { class: "nd-statusbar" }, element("span", { text: `${places.length} ${t("places")} / ${atlas.districts.length} ${t("districts")}` }), credits, legal));
     updateResults();
-    if (this.reviewing && game.user.isGM) this.drawNetworkReview(panel, overlay, atlas);
+    if (this.networkDraft && game.user.isGM) this.drawInteractiveNetwork(panel, overlay, roadMarkers);
+    else if (this.reviewing && game.user.isGM) this.drawNetworkReview(panel, overlay, atlas);
     else if (this.roadDraft && game.user.isGM) this.drawRoadEditor(panel, overlay, roadMarkers, atlas);
-    else if (this.configuring && game.user.isGM) this.drawAtlasEditor(panel, atlas);
+    else if (this.configuring && game.user.isGM) this.drawAtlasEditor(panel, atlas, overlay, roadMarkers);
     else if (this.editing && game.user.isGM) this.drawEditor(panel);
     else if (selected) this.drawDossier(panel, selected);
     else if (this.district) this.drawDistrict(panel, atlas.districts.find(district => district.id === this.district), places);
@@ -432,6 +448,11 @@ export class DossierBoard extends Application {
       this.origin = p;
       this.pickingOrigin = false;
       this.draw();
+    } else if (game.user.isGM && this.configuring && this.districtDrawing) {
+      const district = this.atlasDraft.districts.find(item => item.id === this.districtEditing);
+      if (district) { district.polygon.push(p); this.draw(); }
+    } else if (game.user.isGM && this.networkDraft && this.networkTool === "draw") {
+      this.networkDrawPoint(p);
     } else if (game.user.isGM && this.roadDraft) {
       this.roadDraft.points.push({ ...p, id: `nd-${foundry.utils.randomID()}` });
       this.draw();
@@ -539,6 +560,293 @@ export class DossierBoard extends Application {
     this.draw();
   }
 
+  networkApply(result) {
+    if (!result.ok) throw new Error(result.error.message);
+    this.draw();
+    return result;
+  }
+
+  async cancelNetwork() {
+    if (this.networkDraft?.canUndo && !await Dialog.confirm({
+      title: t("discardNetwork"), content: `<p>${t("confirmDiscardNetwork")}</p>`
+    })) return;
+    this.networkDraft = null;
+    this.networkSelection = null;
+    this.networkLastNode = null;
+    this.draw();
+  }
+
+  networkDrawPoint(point, existingId = null) {
+    const last = this.networkLastNode;
+    const result = this.networkDraft.transact(atlas => {
+      const id = existingId ?? `nd-${foundry.utils.randomID()}`;
+      if (!existingId) atlas.nodes.push({ id, ...point });
+      if (last && last !== id) {
+        if (atlas.edges.some(edge => (edge.from === last && edge.to === id) || (edge.from === id && edge.to === last))) {
+          throw new Error(t("existingSegment"));
+        }
+        atlas.edges.push({ from: last, to: id, modes: ["walk", "bike", "car"] });
+      }
+      return id;
+    });
+    if (!result.ok) throw new Error(result.error.message);
+    this.networkLastNode = result.value;
+    this.networkSelection = { type: "node", id: result.value };
+    this.draw();
+  }
+
+  async deleteNetworkSelection() {
+    requireGM();
+    const selection = this.networkSelection;
+    if (!selection || !this.networkDraft) return;
+    const atlas = this.networkDraft.atlas;
+    const count = selection.type === "node"
+      ? atlas.edges.filter(edge => edge.from === selection.id || edge.to === selection.id).length : 0;
+    if (!await Dialog.confirm({ title: t("deleteSelection"),
+      content: `<p>${t(selection.type === "node" ? "confirmDeleteNode" : "confirmDeleteSegment")} ${count || ""}</p>` })) return;
+    const result = selection.type === "node" ? this.networkDraft.deleteNode(selection.id)
+      : this.networkDraft.transact(data => {
+        data.edges = data.edges.filter(edge => !((edge.from === selection.from && edge.to === selection.to) ||
+          (edge.from === selection.to && edge.to === selection.from)));
+      });
+    this.networkSelection = null;
+    this.networkLastNode = null;
+    this.networkApply(result);
+  }
+
+  async saveInteractiveNetwork() {
+    requireGM();
+    const draft = this.networkDraft;
+    const original = JSON.parse(this.networkOriginal);
+    const current = currentAtlas();
+    if (JSON.stringify(current) !== this.networkOriginal) throw new Error(t("networkConflict"));
+    const next = draft.atlas;
+    const changedNodes = new Set(original.nodes.filter(node => {
+      const updated = next.nodes.find(item => item.id === node.id);
+      return !updated || updated.x !== node.x || updated.y !== node.y;
+    }).map(node => node.id));
+    const affected = allPlaces().filter(place => {
+      if (!place.roadNode) return false;
+      if (changedNodes.has(place.roadNode)) return true;
+      for (const mode of ["walk", "bike", "car"]) {
+        try { roadAccess(original, place, mode); } catch { continue; }
+        try { roadAccess(next, place, mode); } catch { return true; }
+      }
+      return false;
+    });
+    const affectedNames = affected.map(place => place.title).join(", ");
+    const escapedNames = affectedNames.replace(/[&<>"']/g, character =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
+    if (affected.length && !await Dialog.confirm({ title: t("accessWarning"),
+      content: `<p>${t("accessWarningText")} ${affected.length}</p><p>${escapedNames}</p>` })) return;
+    if (JSON.stringify(currentAtlas()) !== this.networkOriginal) throw new Error(t("networkConflict"));
+    await game.settings.set(ID, "atlases", { ...game.settings.get(ID, "atlases"), [mapFamily(next.image)]: next });
+    this.networkDraft = null;
+    this.networkSelection = null;
+    this.networkLastNode = null;
+    if (affected.length) ui.notifications.warn(t("accessWarningText"));
+    this.draw();
+  }
+
+  drawInteractiveNetwork(panel, overlay, markers) {
+    const draft = this.networkDraft;
+    const atlas = draft.atlas;
+    const nodes = new Map(atlas.nodes.map(node => [node.id, node]));
+    panel.append(element("h2", { text: t("editNetwork") }), element("p", { text: t("interactiveNetworkHelp") }));
+    const actions = element("div", { class: "nd-road-actions" });
+    for (const [tool, label] of [["select", "selectRoad"], ["draw", "drawRoad"]]) {
+      const control = button(t(label), () => { this.networkTool = tool; this.networkLastNode = null; this.draw(); });
+      control.setAttribute("aria-pressed", String(this.networkTool === tool));
+      actions.append(control);
+    }
+    actions.append(button(t("undo"), () => { this.networkSelection = null; this.networkLastNode = null; this.networkApply(draft.undo()); }, !draft.canUndo),
+      button(t("redo"), () => { this.networkSelection = null; this.networkLastNode = null; this.networkApply(draft.redo()); }, !draft.canRedo));
+    panel.append(actions);
+    const reviewToggle = button(t(this.networkInspect ? "hideNetworkCheck" : "showNetworkCheck"), () => {
+      this.networkInspect = !this.networkInspect; this.draw();
+    });
+    reviewToggle.setAttribute("aria-pressed", String(Boolean(this.networkInspect)));
+    panel.append(reviewToggle);
+    if (this.networkInspect) {
+      const mode = element("select", { "aria-label": t("reviewMode") });
+      for (const key of ["walk", "bike", "car"]) mode.append(element("option", { value: key, text: t(key) }));
+      mode.value = this.reviewMode;
+      mode.addEventListener("change", () => { this.reviewMode = mode.value; this.draw(); });
+      const inspection = inspectNetwork(atlas, this.reviewMode);
+      panel.append(mode, element("p", { class: "nd-muted", text:
+        `${t("components")}: ${inspection.components.length} · ${t("deadEnds")}: ${inspection.deadEnds.length} · ${t("unjoinedCrossings")}: ${inspection.crossings.length}` }),
+      element("p", { class: "nd-muted", text:
+        `${t("duplicateEdges")}: ${inspection.duplicateEdges.length} · ${t("zeroLengthEdges")}: ${inspection.zeroLengthEdges.length}` }),
+      element("p", { class: "nd-muted", text: t("checkHelp") }));
+      for (const crossing of inspection.crossings) overlay.append(svg("circle", {
+        cx: crossing.x * atlas.width, cy: crossing.y * atlas.height, r: 7, class: "nd-network-crossing"
+      }));
+      for (const id of inspection.deadEnds) {
+        const node = nodes.get(id);
+        overlay.append(svg("circle", { cx: node.x * atlas.width, cy: node.y * atlas.height, r: 5, class: "nd-network-end" }));
+      }
+    }
+    if (this.networkTool === "draw") panel.append(element("p", { text: t("drawInteractiveHelp") }),
+      button(t("finishRoad"), () => { this.networkLastNode = null; this.networkTool = "select"; this.draw(); }));
+    const seen = new Set();
+    for (const edge of atlas.edges) {
+      const key = [edge.from, edge.to].sort().join(":");
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const a = nodes.get(edge.from), b = nodes.get(edge.to);
+      const selected = this.networkSelection?.type === "edge" && [this.networkSelection.from, this.networkSelection.to].sort().join(":") === key;
+      const line = svg("polyline", { class: `nd-road-review${selected ? " nd-road-selected" : ""}`,
+        points: `${a.x * atlas.width},${a.y * atlas.height} ${b.x * atlas.width},${b.y * atlas.height}`,
+        stroke: "#62e5ee", tabindex: "0", role: "button", "aria-label": t("selectSegment"),
+        "data-from": edge.from, "data-to": edge.to });
+      const hit = svg("polyline", { class: "nd-road-hit",
+        points: `${a.x * atlas.width},${a.y * atlas.height} ${b.x * atlas.width},${b.y * atlas.height}`,
+        "data-from": edge.from, "data-to": edge.to });
+      const select = event => {
+        event.stopPropagation();
+        this.networkSelection = { type: "edge", from: edge.from, to: edge.to };
+        this.networkTool = "select"; this.networkLastNode = null; this.draw();
+      };
+      let clickTimer;
+      const click = event => {
+        event.stopPropagation();
+        clearTimeout(clickTimer);
+        clickTimer = setTimeout(() => { if (line.isConnected && this.networkDraft === draft) select(event); }, 400);
+      };
+      line.addEventListener("click", click);
+      hit.addEventListener("click", click);
+      line.addEventListener("keydown", event => {
+        if (["Enter", " "].includes(event.key)) { event.preventDefault(); select(event); }
+      });
+      const split = event => {
+        clearTimeout(clickTimer);
+        event.preventDefault(); event.stopPropagation();
+        const rect = this.mapElement.getBoundingClientRect();
+        const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+        const y = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height));
+        const dx = (b.x - a.x) * atlas.width, dy = (b.y - a.y) * atlas.height;
+        const denominator = dx * dx + dy * dy;
+        const ratio = denominator ? Math.max(0.001, Math.min(0.999,
+          ((x - a.x) * atlas.width * dx + (y - a.y) * atlas.height * dy) / denominator)) : 0.5;
+        const result = draft.splitSegment(edge.from, edge.to, { x: a.x + ratio * (b.x - a.x), y: a.y + ratio * (b.y - a.y) });
+        if (!result.ok) return report(new Error(result.error.message));
+        this.networkSelection = { type: "node", id: result.value };
+        this.draw();
+      };
+      line.addEventListener("dblclick", split);
+      hit.addEventListener("dblclick", split);
+      overlay.append(hit, line);
+      if (selected) {
+        const mx = (a.x + b.x) * atlas.width / 2, my = (a.y + b.y) * atlas.height / 2;
+        const angle = Math.atan2((b.y - a.y) * atlas.height, (b.x - a.x) * atlas.width) * 180 / Math.PI;
+        overlay.append(svg("path", { class: "nd-road-direction", d: "M -7 -5 L 7 0 L -7 5 Z",
+          transform: `translate(${mx} ${my}) rotate(${angle})` }));
+      }
+    }
+    for (const node of atlas.nodes) {
+      const marker = element("button", { type: "button", class: `nd-road-node nd-road-editor-node${this.networkSelection?.id === node.id ? " nd-selected" : ""}`,
+        "aria-label": t("roadPoint"), title: t("roadPoint") });
+      marker.style.left = `${node.x * 100}%`; marker.style.top = `${node.y * 100}%`;
+      marker.addEventListener("click", event => {
+        event.stopPropagation();
+        if (this.networkTool === "draw") {
+          try { this.networkDrawPoint(node, node.id); } catch (error) { report(error); }
+        }
+        else { this.networkSelection = { type: "node", id: node.id }; this.draw(); }
+      });
+      marker.addEventListener("keydown", event => {
+        const offsets = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+        if (!offsets[event.key]) return;
+        event.preventDefault(); event.stopPropagation();
+        const [dx, dy] = offsets[event.key];
+        this.networkSelection = { type: "node", id: node.id };
+        try {
+          this.networkApply(draft.moveNode(node.id, {
+            x: Math.max(0, Math.min(1, node.x + dx / atlas.width)),
+            y: Math.max(0, Math.min(1, node.y + dy / atlas.height))
+          }));
+        } catch (error) { report(error); }
+        this.root.querySelector(".nd-road-editor-node.nd-selected")?.focus();
+      });
+      marker.addEventListener("pointerdown", event => {
+        if (event.button !== 0 || this.networkTool !== "select") return;
+        event.preventDefault(); event.stopPropagation();
+        const startX = event.clientX, startY = event.clientY;
+        let last = null;
+        const move = next => {
+          if (Math.hypot(next.clientX - startX, next.clientY - startY) < 3) return;
+          const rect = this.mapElement.getBoundingClientRect();
+          last = { x: Math.max(0, Math.min(1, (next.clientX - rect.left) / rect.width)),
+            y: Math.max(0, Math.min(1, (next.clientY - rect.top) / rect.height)) };
+          marker.style.left = `${last.x * 100}%`; marker.style.top = `${last.y * 100}%`;
+          for (const line of overlay.querySelectorAll(".nd-road-review, .nd-road-hit")) {
+            const from = line.getAttribute("data-from"), to = line.getAttribute("data-to");
+            if (from !== node.id && to !== node.id) continue;
+            const a = from === node.id ? last : nodes.get(from), b = to === node.id ? last : nodes.get(to);
+            line.setAttribute("points", `${a.x * atlas.width},${a.y * atlas.height} ${b.x * atlas.width},${b.y * atlas.height}`);
+          }
+        };
+        const finish = next => {
+          document.removeEventListener("pointermove", move);
+          document.removeEventListener("pointerup", finish);
+          document.removeEventListener("pointercancel", cancel);
+          if (!last || next.type === "pointercancel") return;
+          this.networkSelection = { type: "node", id: node.id };
+          try { this.networkApply(draft.moveNode(node.id, last)); } catch (error) { report(error); this.draw(); }
+        };
+        const cancel = event => finish(event);
+        document.addEventListener("pointermove", move);
+        document.addEventListener("pointerup", finish);
+        document.addEventListener("pointercancel", cancel);
+      });
+      markers.append(marker);
+    }
+    const selected = this.networkSelection;
+    if (selected?.type === "node" && nodes.has(selected.id)) {
+      const links = atlas.edges.filter(edge => edge.from === selected.id || edge.to === selected.id).length;
+      panel.append(element("h3", { text: t("selectedPoint") }), element("p", { text: `${t("connectedSegments")}: ${links}` }),
+        button(t("deleteSelection"), () => this.deleteNetworkSelection()));
+    }
+    if (selected?.type === "edge") {
+      const edges = atlas.edges.filter(edge => (edge.from === selected.from && edge.to === selected.to) ||
+        (edge.from === selected.to && edge.to === selected.from));
+      if (edges.length) {
+        panel.append(element("h3", { text: t("selectedSegment") }), element("p", { text: t("directionHelp") }));
+        const options = element("div", { class: "nd-road-options" });
+        for (const mode of ["walk", "bike", "car"]) {
+          const matching = edges.filter(edge => edge.modes.includes(mode));
+          const forward = matching.some(edge => !edge.oneWay || edge.from === selected.from);
+          const reverse = matching.some(edge => !edge.oneWay || edge.from === selected.to);
+          const control = element("select", { "aria-label": t(mode) });
+          for (const [value, label] of [["closed", "directionClosed"], ["both", "directionBoth"], ["forward", "directionForward"], ["reverse", "directionReverse"]])
+            control.append(element("option", { value, text: t(label) }));
+          control.value = forward && reverse ? "both" : forward ? "forward" : reverse ? "reverse" : "closed";
+          control.addEventListener("change", () => {
+            try { this.networkApply(draft.editModeDirection(selected.from, selected.to, mode, control.value)); }
+            catch (error) { report(error); this.draw(); }
+          });
+          options.append(element("label", {}, element("span", { text: t(mode) }), control));
+        }
+        panel.append(options, button(t("insertPoint"), () => {
+          const a = nodes.get(selected.from), b = nodes.get(selected.to);
+          const result = draft.splitSegment(selected.from, selected.to, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+          if (!result.ok) throw new Error(result.error.message);
+          this.networkSelection = { type: "node", id: result.value };
+          this.draw();
+        }), button(t("deleteSelection"), () => this.deleteNetworkSelection()));
+      }
+    }
+    panel.append(element("p", { class: "nd-muted", text: t("networkDraftNotice") }),
+      button(t("saveNetwork"), () => this.saveInteractiveNetwork(), !draft.canUndo),
+      button(t("cancel"), () => this.cancelNetwork()));
+    const preset = presetAtlas(atlas.image);
+    if (preset) panel.append(button(t("loadPresetRoads"), async () => {
+      if (!await Dialog.confirm({ title: t("loadPresetRoads"), content: `<p>${t("confirmPresetRoads")}</p>` })) return;
+      this.networkSelection = null; this.networkLastNode = null;
+      this.networkApply(draft.transact(data => { data.nodes = structuredClone(preset.nodes); data.edges = structuredClone(preset.edges); }));
+    }));
+  }
+
   drawNetworkReview(panel, overlay, atlas) {
     const review = inspectNetwork(atlas, this.reviewMode);
     panel.append(element("h2", { text: t("reviewNetwork") }), element("p", { text: t("networkHelp") }));
@@ -641,13 +949,79 @@ export class DossierBoard extends Application {
     for (const place of visible) panel.append(button(place.title, () => { this.selected = place.id; this.draw(); }));
   }
 
-  drawAtlasEditor(panel, atlas) {
+  drawAtlasEditor(panel, atlas, overlay, markers) {
     panel.append(element("h2", { text: t("configureAtlas") }), element("p", { text: t("atlasHelp") }));
     const form = element("form", { class: "nd-editor" });
-    const config = element("textarea", { rows: 22, required: true, "aria-label": t("atlasJson"), maxlength: 1000000 });
-    config.value = this.atlasDraft ?? JSON.stringify(atlas, null, 2);
-    config.addEventListener("input", () => { this.atlasDraft = config.value; });
-    form.append(config, element("button", { type: "submit", text: t("saveAtlas") }), button(t("cancel"), () => {
+    this.atlasDraft ??= structuredClone(atlas);
+    const draft = this.atlasDraft;
+    for (const [name, label, min, max] of [["width", "mapWidth", 100, 20000], ["height", "mapHeight", 100, 20000], ["kmAcross", "mapKilometers", 0.001, 1000]]) {
+      const input = element("input", { name, type: "number", min, max, step: name === "kmAcross" ? "any" : "1", required: true });
+      input.value = draft[name];
+      input.addEventListener("input", () => { draft[name] = Number(input.value); });
+      form.append(element("label", {}, element("span", { text: t(label) }), input));
+    }
+    const chooser = element("select", { "aria-label": t("districts") });
+    chooser.append(element("option", { value: "", text: t("chooseDistrictEdit") }));
+    for (const district of draft.districts) chooser.append(element("option", { value: district.id, text: district.name }));
+    chooser.value = this.districtEditing ?? "";
+    chooser.addEventListener("change", () => { this.districtEditing = chooser.value; this.districtDrawing = false; this.draw(); });
+    form.append(element("label", {}, element("span", { text: t("editDistrict") }), chooser),
+      button(t("addDistrict"), () => {
+        const district = { id: `nd-${foundry.utils.randomID()}`, name: t("newDistrict"), threat: "moderate",
+          description: "", gangs: [], polygon: [] };
+        draft.districts.push(district); this.districtEditing = district.id; this.districtDrawing = true; this.draw();
+      }));
+    const district = draft.districts.find(item => item.id === this.districtEditing);
+    if (district) {
+      for (const [name, label] of [["name", "title"], ["description", "description"], ["gangs", "gangs"]]) {
+        const input = element(name === "description" ? "textarea" : "input", { "aria-label": t(label) });
+        input.value = name === "gangs" ? district.gangs.join(", ") : district[name];
+        input.addEventListener("input", () => {
+          district[name] = name === "gangs" ? input.value.split(",").map(value => value.trim()).filter(Boolean) : input.value;
+        });
+        form.append(element("label", {}, element("span", { text: t(label) }), input));
+      }
+      const threat = element("select", { "aria-label": t("threat") });
+      for (const level of ["low", "moderate", "high", "extreme"]) threat.append(element("option", { value: level, text: t(level) }));
+      threat.value = district.threat;
+      threat.addEventListener("change", () => { district.threat = threat.value; });
+      form.append(element("label", {}, element("span", { text: t("threat") }), threat),
+        element("p", { text: t("districtShapeHelp") }),
+        button(t(this.districtDrawing ? "finishDistrictShape" : "drawDistrictShape"), () => {
+          if (!this.districtDrawing) district.polygon = [];
+          this.districtDrawing = !this.districtDrawing; this.draw();
+        }),
+        button(t("deleteDistrict"), async () => {
+          if (!await Dialog.confirm({ title: t("deleteDistrict"), content: `<p>${t("confirmDeleteDistrict")}</p>` })) return;
+          draft.districts = draft.districts.filter(item => item.id !== district.id);
+          this.districtEditing = ""; this.districtDrawing = false; this.draw();
+        }));
+      if (district.polygon.length) {
+        overlay.append(svg("polyline", { class: "nd-route-line", points:
+          [...district.polygon, ...(district.polygon.length > 2 ? [district.polygon[0]] : [])]
+            .map(point => `${point.x * atlas.width},${point.y * atlas.height}`).join(" ") }));
+        district.polygon.forEach((point, index) => {
+          const marker = element("button", { type: "button", class: "nd-road-node nd-road-editor-node", "aria-label": t("districtPoint") });
+          marker.style.left = `${point.x * 100}%`; marker.style.top = `${point.y * 100}%`;
+          marker.addEventListener("pointerdown", event => {
+            if (event.button !== 0) return;
+            event.preventDefault(); event.stopPropagation();
+            const finish = next => {
+              document.removeEventListener("pointerup", finish);
+              const rect = this.mapElement.getBoundingClientRect();
+              district.polygon[index] = { x: Math.max(0, Math.min(1, (next.clientX - rect.left) / rect.width)),
+                y: Math.max(0, Math.min(1, (next.clientY - rect.top) / rect.height)) };
+              this.draw();
+            };
+            document.addEventListener("pointerup", finish);
+          });
+          markers.append(marker);
+        });
+      }
+    }
+    form.append(element("button", { type: "submit", text: t("saveAtlas") }), button(t("cancel"), () => {
+      this.atlasDraft = null;
+      this.districtEditing = ""; this.districtDrawing = false;
       this.configuring = false; this.draw();
     }));
     form.addEventListener("submit", async event => {
@@ -656,10 +1030,10 @@ export class DossierBoard extends Application {
       submit.disabled = true;
       try {
         requireGM();
-        const data = atlasData(JSON.parse(config.value));
+        const data = atlasData(draft);
         if (data.image !== game.settings.get(ID, "mapImage")) throw new Error(t("mapMismatch"));
         await game.settings.set(ID, "atlases", { ...game.settings.get(ID, "atlases"), [mapFamily(data.image)]: data });
-        this.configuring = false;
+        this.atlasDraft = null; this.districtEditing = ""; this.districtDrawing = false; this.configuring = false;
         this.draw();
       } catch (error) { report(error); }
       finally { submit.disabled = false; }
@@ -744,8 +1118,6 @@ export class DossierBoard extends Application {
     district.value = data.district ?? "";
     district.addEventListener("change", () => { data.district = district.value; });
     form.append(element("label", {}, element("span", { text: t("district") }), district));
-    const roadNode = field("roadNode", "roadNode", { maxlength: 64 });
-    roadNode.addEventListener("input", () => { delete data.access; this.tracingAccess = false; });
     form.append(element("p", { text: t("accessHelp") }),
       button(t(this.tracingAccess ? "cancelAccess" : "traceAccess"), () => {
         this.tracingAccess = !this.tracingAccess;
@@ -771,7 +1143,7 @@ export class DossierBoard extends Application {
     for (const axis of ["x", "y"]) {
       const coordinate = field(axis, axis, { type: "number", min: 0, max: 1, step: "any", required: true });
       coordinate.addEventListener("input", () => {
-        delete data.access; delete data.roadNode; roadNode.value = ""; this.tracingAccess = false;
+        delete data.access; delete data.roadNode; this.tracingAccess = false;
       });
     }
     data.notes ??= data.id ? privateNote(data.id)?.getFlag(ID, "note") ?? "" : "";
@@ -790,7 +1162,7 @@ export class DossierBoard extends Application {
         requireGM();
         const values = Object.fromEntries(new FormData(form));
         if (this.tracingAccess) throw new Error(t("finishAccess"));
-        const place = placeData({ ...values, ...(data.access ? { access: data.access } : {}),
+        const place = placeData({ ...values, ...(data.roadNode ? { roadNode: data.roadNode } : {}), ...(data.access ? { access: data.access } : {}),
           mapImage: currentAtlas().image, x: Number(values.x), y: Number(values.y) });
         const atlas = currentAtlas();
         if (place.district && !atlas.districts.some(item => item.id === place.district)) throw new Error(t("invalidDistrict"));
@@ -825,9 +1197,22 @@ export class SceneDossierBoard extends DossierBoard {
     this.sceneMode = true;
     this.welcomeDismissed = true;
     this.tick = () => this.updateSceneTransform();
+    this.networkKey = event => {
+      if (!this.networkDraft || !game.user.isGM || event.target?.matches?.("input,textarea,select,[contenteditable=true]")) return;
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        const draft = this.networkDraft;
+        if (event.shiftKey ? draft.canRedo : draft.canUndo) {
+          this.networkSelection = null; this.networkLastNode = null;
+          this.networkApply(event.shiftKey ? draft.redo() : draft.undo());
+        }
+      } else if (["Delete", "Backspace"].includes(event.key) && this.networkSelection) {
+        event.preventDefault(); this.deleteNetworkSelection().catch(report);
+      }
+    };
     this.pick = event => {
       if (event.button !== 0 || event.target !== canvas.app.view ||
-          (!this.pickingOrigin && (!game.user.isGM || (!this.editing && !this.roadDraft)))) return;
+          (!this.pickingOrigin && (!game.user.isGM || (!this.editing && !this.roadDraft && !(this.networkDraft && this.networkTool === "draw") && !(this.configuring && this.districtDrawing))))) return;
       try {
         const p = scenePoint(canvas.stage.worldTransform, canvas.dimensions,
           canvas.app.view.getBoundingClientRect(), event.clientX, event.clientY);
@@ -850,6 +1235,7 @@ export class SceneDossierBoard extends DossierBoard {
       this.ticker = canvas.app.ticker;
       this.ticker.add(this.tick);
       document.addEventListener("pointerdown", this.pick, true);
+      document.addEventListener("keydown", this.networkKey, true);
     }
     this.draw();
     return this;
@@ -865,8 +1251,10 @@ export class SceneDossierBoard extends DossierBoard {
   }
 
   async close() {
+    if (this.networkDraft?.canUndo) ui.notifications.warn(t("networkDraftLost"));
     this.ticker?.remove(this.tick);
     document.removeEventListener("pointerdown", this.pick, true);
+    document.removeEventListener("keydown", this.networkKey, true);
     this.host?.remove();
     this.root = null;
     windows.delete(this);
@@ -991,6 +1379,9 @@ for (const hook of ["createJournalEntry", "updateJournalEntry", "deleteJournalEn
       board.reviewing = false;
       board.roadDraft = null;
       board.tracingAccess = false;
+      if (!game.user.isGM && board.networkDraft) {
+        board.networkDraft = null; board.networkSelection = null; board.networkLastNode = null;
+      }
       board.refresh();
     }
     syncIfGM();

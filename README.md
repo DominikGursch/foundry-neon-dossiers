@@ -200,12 +200,16 @@ delete dossiers; use the scene button to recreate it.
 
 ## Districts, scale and roads
 
-Use **GM TOOLS > Draw road** to trace streets and bridges point by point
-directly on the scene. Click existing red nodes to join the graph; crossing
-lines are not automatically connected. Choose permitted travel modes and save.
-Cancel leaves the saved network unchanged; undo removes the last draft point.
-All road geometry is public and the GM is responsible for tracing traversable
-streets, not straight shortcuts through water or buildings.
+Use **GM TOOLS > Edit street network** to adjust streets on the scene. Drag
+points, select a segment to set each mode's allowed direction, double-click
+the segment or use **Insert point** to add a bend, or choose **Draw road**
+and click existing points to connect new streets. Select a point or segment
+and press Delete or use the delete button. Undo/redo is available until
+**Save street network**; cancel discards the draft after confirmation.
+Moving or deleting points may affect existing place access paths: the GM is
+warned before saving and must review affected places. All road geometry is
+public and the GM is responsible for tracing traversable streets, not
+shortcuts through water or buildings.
 
 **Community street survey:** `scripts/community-roads.js` records 696
 image-positioned junctions/bends and 995 segments. It expands Watson, the
@@ -220,25 +224,22 @@ minor streets, access restrictions and official traffic directions remain
 unmapped. Bidirectional access and allowed modes are editable campaign
 assumptions, not facts extracted from road signs.
 
-**GM TOOLS > Inspect street network** overlays the selected travel mode's
-graph on the map. Colors distinguish connected components; amber circles
-show dead ends and red circles flag crossings without a shared node.
-Counts also expose unused nodes, duplicate and zero-length edges. A crossing
-warning is not proof of an error: overpasses must stay disconnected.
-Click a segment to change modes, make it one-way in `from` → `to` direction,
-or delete it. Component counts ignore direction; try both travel directions
-when reviewing one-way roads.
+In the editor, **Check network** shows component counts for a chosen mode,
+amber endpoints and red crossings without a shared node. A crossing warning
+is not proof of an error: overpasses must stay disconnected. Component
+counts ignore direction; try both travel directions when reviewing one-way
+roads.
 
 Existing saved street graphs are **not automatically replaced** by this
-expanded survey. Back up the JSON first. In the review card, **Load current
-preset streets** requires confirmation and replaces only this family's
+expanded survey. In the editor, **Load current preset streets** requires
+confirmation and replaces only this family's
 street nodes/edges, not scale, districts, dossiers or other map families.
 Corrected street coordinates can invalidate previously traced POI access
 paths: check and retrace those after replacing a saved graph.
 
-Use **Map / districts / roads** as GM to edit the validated atlas JSON. The
-current configuration is shown as a starting point and can be copied for a
-backup. Choosing a bundled preset loads that map's own configuration.
+Use **Map and districts** as GM to edit dimensions and scale with form fields
+and to create, edit or remove districts and draw their boundaries on the map.
+Choosing a bundled preset loads that map's own configuration.
 Choosing an unconfigured custom image deliberately starts with **no roads or
 districts**, instead of reusing unrelated geometry. Set `width` and `height` to the image's
 pixel dimensions and `kmAcross` to the real horizontal span. The default 10 km
@@ -249,44 +250,8 @@ campaign assumptions, not official distances. The Atlas does not define fixed
 dimensions for Night City. All atlas fields are public; never put
 GM secrets in districts, road IDs or descriptions.
 
-Minimal example (replace the image path with the currently selected map):
-
-```json
-{
-  "image": "worlds/my-world/maps/city.webp",
-  "width": 2000,
-  "height": 1600,
-  "kmAcross": 12,
-  "nodes": [
-    { "id": "junction-a", "x": 0.2, "y": 0.3 },
-    { "id": "junction-b", "x": 0.6, "y": 0.3 }
-  ],
-  "edges": [
-    { "from": "junction-a", "to": "junction-b", "modes": ["walk", "bike", "car"] }
-  ],
-  "districts": [
-    {
-      "id": "harbor",
-      "name": "Campaign harbor",
-      "threat": "moderate",
-      "description": "Your own district summary.",
-      "gangs": ["Your campaign faction"],
-      "polygon": [
-        { "x": 0.1, "y": 0.1 },
-        { "x": 0.7, "y": 0.1 },
-        { "x": 0.7, "y": 0.6 },
-        { "x": 0.1, "y": 0.6 }
-      ]
-    }
-  ]
-}
-```
-
-Coordinates are fractions of the image; IDs use letters, numbers, `_` or `-`
-(1-64 characters) and must be unique within nodes/districts. District threats:
-`low`, `moderate`, `high`, `extreme`. Assign a district in each POI's editor;
-membership is explicit, not inferred from polygon overlap. Keep IDs stable
-when editing the atlas.
+Assign a district in each POI's editor; membership is explicit, not inferred
+from polygon overlap. District edits are saved for the selected map family.
 
 **Connecting a place:** a ground-route endpoint must lie within **20 metres**
 of a mode-compatible mapped street segment. It snaps to that segment, not a
@@ -306,8 +271,7 @@ do not add edges through water, buildings or other barriers. Crossed lines are
 not connected unless they share a node ID. Mode restrictions can represent
 pedestrian-only streets. Optional `"oneWay": true` permits only `from` → `to`
 for all modes listed on that edge. Use separate mode-specific edges if
-pedestrians may travel both ways. Roads can be drawn and inspected on the map;
-JSON remains available for detailed junction/topology corrections. There is
+pedestrians may travel both ways. Roads can be drawn and inspected on the map. There is
 no automatic runtime map-image road extractor.
 
 Routing uses Dijkstra's shortest-distance path over mode-compatible edges,

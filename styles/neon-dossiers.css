@@ -64,7 +64,17 @@
 .neon-dossiers .nd-mode-choice { display: flex; align-items: center; gap: 8px; }
 .neon-dossiers .nd-mode-choice input { width: auto; min-height: 0; }
 .neon-dossiers .nd-road-review { fill: none; stroke-width: 5; pointer-events: stroke; cursor: pointer; }
+.neon-dossiers .nd-road-hit { fill: none; stroke: transparent; stroke-width: 16; vector-effect: non-scaling-stroke; pointer-events: stroke; cursor: pointer; }
 .neon-dossiers .nd-road-review:is(:hover,:focus-visible,.nd-road-selected) { stroke: #fff; stroke-width: 9; }
+.neon-dossiers .nd-road-editor-node { touch-action: none; cursor: grab; border-radius: 50%; width: 15px; height: 15px; min-height: 15px; background: #62e5ee; border: 2px solid #08090d; }
+.neon-dossiers .nd-road-editor-node:active { cursor: grabbing; }
+.neon-dossiers .nd-road-editor-node.nd-selected { background: #fff; outline: 2px solid var(--nd-red); outline-offset: 2px; }
+.neon-dossiers .nd-road-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.neon-dossiers .nd-road-actions button[aria-pressed="true"] { border-color: var(--nd-cyan); color: var(--nd-cyan); }
+.neon-dossiers .nd-road-direction { fill: #fff; stroke: #08090d; stroke-width: 1; pointer-events: none; }
+.neon-dossiers .nd-road-options { display: grid; gap: 8px; }
+.neon-dossiers .nd-road-options label { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 5px; }
+.neon-dossiers .nd-road-options select { min-width: 0; }
 .neon-dossiers .nd-network-end { fill: #f5bb69; stroke: #08090d; stroke-width: 1; pointer-events: none; }
 .neon-dossiers .nd-network-crossing { fill: none; stroke: #ff4655; stroke-width: 2; pointer-events: none; }
 .neon-dossiers .nd-origin { fill: #08090d; stroke: var(--nd-cyan); stroke-width: 7; r: 15; }

@@ -37,7 +37,7 @@ class Node {
     return this.find(node => node.tag === selector);
   }
   async fire(event, extra = {}) {
-    for (const listener of this.events[event] ?? []) await listener({ preventDefault() {}, target: this, ...extra });
+    for (const listener of this.events[event] ?? []) await listener({ preventDefault() {}, stopPropagation() {}, target: this, ...extra });
     await new Promise(resolve => setImmediate(resolve));
   }
 }
@@ -300,7 +300,10 @@ test("map switching keeps starter creation idempotent and saves separate customi
   assert.equal(count(), 8, "Atlas image variants do not duplicate starters");
   await findButton(board.root, en.configureAtlas).fire("click");
   let form = board.root.querySelector("form");
-  form.querySelector("textarea").value = JSON.stringify({ ...presetAtlas(CITY_STREETS), kmAcross: 14 });
+  assert.equal(form.querySelector("textarea"), null, "configuration does not expose structured data");
+  form.elements.namedItem("kmAcross").value = "14";
+  await form.elements.namedItem("kmAcross").fire("input");
+  assert.notEqual(settings.get("atlases")?.[CITY_MAP]?.kmAcross, 14, "edits remain a draft until saved");
   await form.fire("submit");
   assert.equal(settings.get("atlases")[CITY_MAP].kmAcross, 14);
   settings.set("mapImage", COMMUNITY_MAP);
@@ -309,7 +312,8 @@ test("map switching keeps starter creation idempotent and saves separate customi
   assert.equal(game.journal.contents.filter(entry => entry.getFlag(ID, "place")?.mapImage === COMMUNITY_MAP).length, 7);
   await findButton(board.root, en.configureAtlas).fire("click");
   form = board.root.querySelector("form");
-  form.querySelector("textarea").value = JSON.stringify({ ...presetAtlas(COMMUNITY_MAP), kmAcross: 21 });
+  form.elements.namedItem("kmAcross").value = "21";
+  await form.elements.namedItem("kmAcross").fire("input");
   await form.fire("submit");
   assert.equal(settings.get("atlases")[COMMUNITY_MAP].kmAcross, 21);
   assert.equal(settings.get("atlases")[CITY_MAP].kmAcross, 14, "saving another map does not replace prior edits");
@@ -343,26 +347,42 @@ test("zoom preserves an unsaved dossier draft; invalid map data fails visibly", 
   await board.close();
 });
 
-test("GM draws mode-restricted roads and explicit access paths without editing JSON", async () => {
+test("districts can be added and drawn on the map without structured-data editing", async () => {
+  game.user = { id: "gm", isGM: true };
+  settings.set("mapImage", DEFAULT_MAP);
+  settings.delete("atlases");
+  const board = newBoard();
+  board.draw();
+  await findButton(board.root, en.configureAtlas).fire("click");
+  await findButton(board.root, en.addDistrict).fire("click");
+  board.pickPoint({ x: 0.1, y: 0.1 });
+  board.pickPoint({ x: 0.2, y: 0.1 });
+  board.pickPoint({ x: 0.2, y: 0.2 });
+  await findButton(board.root, en.finishDistrictShape).fire("click");
+  assert.equal(settings.get("atlases"), undefined, "district remains a draft until saved");
+  await board.root.querySelector("form").fire("submit");
+  const district = settings.get("atlases")[DEFAULT_MAP].districts.at(-1);
+  assert.equal(district.name, en.newDistrict);
+  assert.equal(district.polygon.length, 3);
+  await board.close();
+  settings.delete("atlases");
+});
+
+test("GM draws roads and explicit access paths without editing JSON", async () => {
   game.user = { id: "gm", isGM: true };
   settings.delete("atlases");
   const board = newBoard();
   board.draw();
+  await findButton(board.root, en.editNetwork).fire("click");
   await findButton(board.root, en.drawRoad).fire("click");
-  await findButton(board.root, "r0c0").fire("click");
+  await board.root.find(node => node.className?.includes("nd-road-editor-node")).fire("click");
   board.pickPoint({ x: 0.3, y: 0.2 });
-  board.pickPoint({ x: 0.4, y: 0.2 });
-  await findButton(board.root, en.undoPoint).fire("click");
-  const boxes = [];
-  const visit = node => { if (node.attributes.type === "checkbox") boxes.push(node); for (const child of node.children) visit(child); };
-  visit(board.root);
-  boxes[2].checked = false;
-  await boxes[2].fire("change");
-  await findButton(board.root, en.saveRoad).fire("click");
+  assert.equal(settings.get("atlases"), undefined, "drawing must not save before confirmation");
+  await findButton(board.root, en.saveNetwork).fire("click");
   const atlas = settings.get("atlases")[DEFAULT_MAP];
   assert.equal(atlas.nodes.length, presetAtlas(DEFAULT_MAP).nodes.length + 1);
-  assert.deepEqual(atlas.edges.at(-1).modes, ["walk", "bike"]);
-  assert.equal(board.roadDraft, null);
+  assert.deepEqual(atlas.edges.at(-1).modes, ["walk", "bike", "car"]);
+  assert.equal(board.networkDraft, null);
 
   await findButton(board.root, en.addPlace).fire("click");
   const title = board.root.querySelector("form").elements.namedItem("title");
@@ -375,7 +395,7 @@ test("GM draws mode-restricted roads and explicit access paths without editing J
   assert.equal(board.tracingAccess, false);
   assert.equal(board.editing.access.length, 3);
   const form = board.root.querySelector("form");
-  assert.equal(form.elements.namedItem("roadNode").value, "r0c0");
+  assert.equal(board.editing.roadNode, "r0c0");
   await form.fire("submit");
   const saved = game.journal.get(board.selected).flags[ID].place;
   assert.equal(saved.title, "Traced place");
@@ -388,7 +408,7 @@ test("GM draws mode-restricted roads and explicit access paths without editing J
   await coordinate.fire("input");
   assert.equal(board.editing.access, undefined);
   assert.equal(board.editing.roadNode, undefined);
-  assert.equal(board.root.querySelector("form").elements.namedItem("roadNode").value, "");
+  assert.equal(board.root.querySelector("form").elements.namedItem("roadNode"), null);
   assert.equal(saved.access.length, 3, "unsaved movement cannot change the stored access path");
   await board.close();
   settings.delete("atlases");
@@ -468,7 +488,7 @@ test("scene HUD auto-mounts, follows the canvas, handles picks and drops revoked
   delete globalThis.canvas;
 });
 
-test("network review edits directions and requires explicit confirmation before replacing only this family's roads", async () => {
+test("network editor drafts per-mode directions and confirms preset replacement", async () => {
   game.user = { id: "gm", isGM: true };
   settings.set("mapImage", DEFAULT_MAP);
   const customized = presetAtlas(DEFAULT_MAP);
@@ -479,29 +499,27 @@ test("network review edits directions and requires explicit confirmation before 
   const journalCount = game.journal.contents.length;
   const board = newBoard();
   board.draw();
-  await findButton(board.root, en.reviewNetwork).fire("click");
-  assert.ok(board.reviewing);
+  await findButton(board.root, en.editNetwork).fire("click");
+  assert.ok(board.networkDraft);
+  await findButton(board.root, en.showNetworkCheck).fire("click");
   assert.ok(contains(board.root, en.components));
   const firstLine = () => board.root.find(node => node.attributes.class?.startsWith("nd-road-review"));
   await firstLine().fire("click");
-  const boxes = [];
-  const visit = node => { if (node.attributes.type === "checkbox") boxes.push(node); for (const child of node.children) visit(child); };
-  visit(board.root);
-  assert.equal(boxes.length, 4);
-  boxes[1].checked = false;
-  await boxes[1].fire("change");
-  boxes[3].checked = true;
-  await findButton(board.root, en.saveRoad).fire("click");
-  const saved = settings.get("atlases")[DEFAULT_MAP];
-  assert.equal(saved.edges[0].oneWay, true);
-  assert.deepEqual(saved.edges[0].modes, ["walk", "car"]);
+  await new Promise(resolve => setTimeout(resolve, 450));
+  const bike = board.root.find(node => node.tag === "select" && node.attributes["aria-label"] === en.bike);
+  bike.value = "reverse";
+  await bike.fire("change");
+  assert.deepEqual(settings.get("atlases")[DEFAULT_MAP], customized, "direction changes stay in the draft");
+  assert.ok(board.networkDraft.atlas.edges.some(edge => edge.oneWay && edge.modes.includes("bike")));
   const originalConfirm = Dialog.confirm;
   Dialog.confirm = async () => false;
   await findButton(board.root, en.loadPresetRoads).fire("click");
-  assert.equal(settings.get("atlases")[DEFAULT_MAP], saved, "cancel leaves custom data untouched");
+  assert.equal(settings.get("atlases")[DEFAULT_MAP], customized, "cancel leaves custom data untouched");
   Dialog.confirm = async () => true;
   try { await findButton(board.root, en.loadPresetRoads).fire("click"); }
   finally { Dialog.confirm = originalConfirm; }
+  assert.equal(settings.get("atlases")[DEFAULT_MAP], customized, "preset also remains a draft");
+  await findButton(board.root, en.saveNetwork).fire("click");
   const updated = settings.get("atlases")[DEFAULT_MAP];
   assert.equal(updated.kmAcross, 17);
   assert.equal(updated.districts[0].name, "Custom district");
@@ -509,13 +527,44 @@ test("network review edits directions and requires explicit confirmation before 
   assert.deepEqual(updated.edges, presetAtlas(DEFAULT_MAP).edges);
   assert.equal(settings.get("atlases")[CITY_MAP].kmAcross, 19);
   assert.equal(game.journal.contents.length, journalCount, "loading a street preset must never seed places");
-  await firstLine().fire("keydown", { key: "Enter" });
-  const count = updated.edges.length;
-  await findButton(board.root, en.deleteRoad).fire("click");
-  assert.equal(settings.get("atlases")[DEFAULT_MAP].edges.length, count - 1);
   game.user = { id: "player", isGM: false };
   board.draw();
-  assert.equal(board.root.find(node => node.textContent === en.reviewNetwork), null);
+  assert.equal(board.root.find(node => node.textContent === en.editNetwork), null);
   await board.close();
   settings.delete("atlases");
+});
+
+test("moving an access node requires confirmation and preserves the network when declined", async () => {
+  game.user = { id: "gm", isGM: true };
+  settings.set("mapImage", DEFAULT_MAP);
+  settings.delete("atlases");
+  const atlas = presetAtlas(DEFAULT_MAP);
+  const node = atlas.nodes[0];
+  const place = { ...EXAMPLES[0], title: "Access test", x: 0.1, y: 0.1,
+    roadNode: node.id, access: [{ x: 0.1, y: 0.1 }, { x: node.x, y: node.y }] };
+  const entry = await JournalEntry.create({ name: place.title, ownership: { default: 0 },
+    flags: { [ID]: { place } } });
+  const board = newBoard();
+  board.draw();
+  await findButton(board.root, en.editNetwork).fire("click");
+  board.networkApply(board.networkDraft.moveNode(node.id, { x: node.x + 0.01, y: node.y }));
+  const originalConfirm = Dialog.confirm;
+  let warning;
+  Dialog.confirm = async options => { warning = options; return false; };
+  try {
+    await findButton(board.root, en.saveNetwork).fire("click");
+    assert.equal(settings.get("atlases"), undefined);
+    assert.match(warning.content, /Access test/);
+    assert.ok(board.networkDraft, "the draft remains available after declining");
+    Dialog.confirm = async () => true;
+    await findButton(board.root, en.saveNetwork).fire("click");
+    assert.equal(settings.get("atlases")[DEFAULT_MAP].nodes[0].x, node.x + 0.01);
+    assert.deepEqual(entry.getFlag(ID, "place").access, place.access, "access is never silently rewritten");
+    assert.equal(notifications.at(-1)[0], "warn");
+  } finally {
+    Dialog.confirm = originalConfirm;
+    await entry.delete();
+    await board.close();
+    settings.delete("atlases");
+  }
 });

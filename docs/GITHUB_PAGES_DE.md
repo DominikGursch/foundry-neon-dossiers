@@ -99,17 +99,17 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
   Straßenknoten abschließen. Alternativ neue Orte direkt an erfasste Straßen
   setzen (maximal 20 m Einrastabstand). Freie Verbindungen quer über Wasser
   werden nicht mehr automatisch gezeichnet.
-- Über **SL-WERKZEUGE > Straße einzeichnen** das Teilnetz ergänzen, vorhandene
-  Knoten zum Anschließen anklicken und erlaubte Fortbewegungen wählen.
-- **SL-WERKZEUGE > Straßennetz prüfen** zeigt Straßen nach Fortbewegung,
-  verbundene Netzteile, Endpunkte und unverbundene geometrische Kreuzungen.
-  Abschnitte lassen sich dort auswählen und in Fortbewegung/Richtung ändern
-  oder löschen. Das Community-Netz enthält 696 Knoten und 995 Abschnitte,
+- Unter **SL-WERKZEUGE > Straßennetz bearbeiten** Punkte ziehen oder
+  Abschnitte anklicken und Richtung je Fortbewegung wählen. Per Doppelklick
+  auf einen Abschnitt oder mit **Punkt einfügen** lässt sich ein Punkt
+  ergänzen. **Straße einzeichnen** verbindet neue und vorhandene Punkte.
+  Änderungen werden erst mit **Straßennetz speichern** übernommen.
+- **Netz prüfen** zeigt verbundene Netzteile, Endpunkte und unverbundene
+  geometrische Kreuzungen. Das Community-Netz enthält 696 Knoten und 995 Abschnitte,
   ist aber **keine vollständige Erfassung sämtlicher Straßen und Gassen**.
 - Bereits gespeicherte eigene Netze werden nicht automatisch ersetzt.
-  Zum Aktualisieren zuerst die JSON-Konfiguration sichern, dann in der
-  Prüfansicht ausdrücklich **Aktuelles Vorlagen-Straßennetz übernehmen**
-  bestätigen. Nur die Straßen dieser Kartenfamilie werden ersetzt; bestehende
+  Zum Aktualisieren im Editor ausdrücklich **Aktuelles Vorlagen-Straßennetz
+  übernehmen** bestätigen und anschließend speichern. Nur die Straßen dieser Kartenfamilie werden ersetzt; bestehende
   Ortszugänge müssen anschließend kontrolliert werden.
 - Auf **Spieler / Player** umschalten, um die eingeschränkte Ansicht zu sehen.
 - Den Kartenhintergrund ziehen, um ihn zu verschieben; mit dem Mausrad oder

@@ -12,7 +12,7 @@ assets, not relicensed under the module's MIT license.
 Browse Night City on the supplied Atlas or community map, search places, filter four
 categories and open dossiers from markers or the place list. GMs can create,
 edit and delete places, select local map/dossier images, position markers by
-clicking the map or entering normalized coordinates, and share or revoke
+dragging them in the dossier editor, clicking the map or entering coordinates, and share or revoke
 dossier access. English and German interface translations are included.
 Starter descriptions are in English.
 
@@ -210,6 +210,11 @@ Moving or deleting points may affect existing place access paths: the GM is
 warned before saving and must review affected places. All road geometry is
 public and the GM is responsible for tracing traversable streets, not
 shortcuts through water or buildings.
+Dossier markers are hidden during street editing so they cannot obstruct
+street segments or points. Outside that mode, select a dossier and choose
+**Edit dossier** to drag its marker; save to keep the new position. Cancelling
+leaves the stored dossier and its access path unchanged. A moved dossier's
+previous access path is removed when saved and may need to be traced again.
 
 **Community street survey:** `scripts/community-roads.js` records 696
 image-positioned junctions/bends and 995 segments. It expands Watson, the

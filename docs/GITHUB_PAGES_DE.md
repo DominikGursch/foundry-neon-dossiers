@@ -87,6 +87,10 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
   und keine schwarzen Seitenstreifen. Sie startet ohne interaktive POIs;
   mit **SL-WERKZEUGE > Ort hinzufügen** legt die Spielleitung eigene Orte an.
 - Einen nummerierten Marker anklicken: Rechts öffnet sich sein Dossier.
+- Mit **Dossier bearbeiten** lässt sich der Marker auf der Karte ziehen
+  oder mit den Pfeiltasten verschieben. Erst **Dossier speichern** übernimmt
+  die neue Position. Ein vorhandener Straßenzugang muss nach dem Verschieben
+  gegebenenfalls neu gezeichnet werden; **Abbrechen** erhält die alten Daten.
 - Einen District auswählen: Rechts erscheinen Threat Level, Fraktionen und
   die für diese Ansicht sichtbaren POIs.
 - **Route / Orte** öffnen, einen Startort und eine Fortbewegung auswählen
@@ -104,6 +108,7 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
   auf einen Abschnitt oder mit **Punkt einfügen** lässt sich ein Punkt
   ergänzen. **Straße einzeichnen** verbindet neue und vorhandene Punkte.
   Änderungen werden erst mit **Straßennetz speichern** übernommen.
+  Dossiermarker sind währenddessen ausgeblendet und verdecken keine Straßenpunkte.
 - **Netz prüfen** zeigt verbundene Netzteile, Endpunkte und unverbundene
   geometrische Kreuzungen. Das Community-Netz enthält 696 Knoten und 995 Abschnitte,
   ist aber **keine vollständige Erfassung sämtlicher Straßen und Gassen**.

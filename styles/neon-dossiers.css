@@ -83,6 +83,8 @@
 .neon-dossiers .nd-marker::after { content: attr(data-label); position: absolute; left: 50%; bottom: calc(100% + 7px); transform: translateX(-50%); background: #0c0d12; border: 1px solid var(--nd-category); padding: 3px 8px; color: #fff; white-space: nowrap; opacity: 0; pointer-events: none; font-size: 11px; }
 .neon-dossiers .nd-marker:is(:hover,:focus-visible,.nd-selected) { outline: 2px solid #fff; outline-offset: 3px; z-index: 3; background: var(--nd-category); color: #08090d; }
 .neon-dossiers .nd-marker:is(:hover,:focus-visible,.nd-selected)::after { opacity: 1; }
+.neon-dossiers .nd-dossier-draft { cursor: grab; touch-action: none; outline: 2px solid #fff; outline-offset: 3px; z-index: 4; }
+.neon-dossiers .nd-dossier-draft:active { cursor: grabbing; }
 .neon-dossiers .nd-sidebar, .neon-dossiers .nd-panel { position: absolute; z-index: 5; background: #0e0f15f5; border: 1px solid var(--nd-line); border-top: 2px solid var(--nd-red); box-shadow: 0 15px 40px #0008; overflow: auto; scrollbar-color: #663a45 #111217; }
 .neon-dossiers .nd-sidebar { left: 12px; top: 12px; bottom: 64px; width: 230px; padding: 14px; }
 .neon-dossiers .nd-panel { top: 12px; right: 12px; max-height: calc(100% - 24px); width: 312px; padding: 18px; }

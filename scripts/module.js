@@ -117,6 +117,7 @@ export class DossierBoard extends Application {
   }
 
   async close(options) {
+    this.dossierDragCleanup?.();
     windows.delete(this);
     return super.close(options);
   }
@@ -132,6 +133,8 @@ export class DossierBoard extends Application {
   }
 
   draw() {
+    this.dossierDragCleanup?.();
+    this.dossierMarker = null;
     if (this.mapScroll?.isConnected && !this.resetViewport) {
       const ratio = this.zoom / (this.renderedZoom ?? this.zoom);
       this.viewport = {
@@ -184,6 +187,7 @@ export class DossierBoard extends Application {
       }));
     }
     const markers = element("div", { class: "nd-markers" });
+    if (this.networkDraft || this.editing) markers.setAttribute("hidden", "");
     map.append(overlay, markers);
     const updateResults = () => {
       list.replaceChildren();
@@ -460,12 +464,86 @@ export class DossierBoard extends Application {
       if (this.tracingAccess) {
         this.editing.access.push(p);
       } else {
-        Object.assign(this.editing, p);
-        delete this.editing.access;
-        delete this.editing.roadNode;
+        this.moveDossier(p);
       }
       this.draw();
     }
+  }
+
+  moveDossier(point) {
+    requireGM();
+    if (!this.editing || this.tracingAccess) return;
+    if (Number(this.editing.x) === point.x && Number(this.editing.y) === point.y) return;
+    Object.assign(this.editing, point);
+    delete this.editing.access;
+    delete this.editing.roadNode;
+  }
+
+  drawDossierMarker(markers, atlas) {
+    const data = this.editing;
+    const marker = element("button", { type: "button", class: `nd-marker nd-cat-${data.category} nd-dossier-draft`,
+      "aria-label": t("moveDossierMarker"), title: t("moveDossierMarker"), "data-label": t("moveDossierMarker"), text: "✥" });
+    marker.style.left = `${Number(data.x) * 100}%`;
+    marker.style.top = `${Number(data.y) * 100}%`;
+    this.dossierMarker = marker;
+    marker.addEventListener("pointerdown", event => {
+      if (event.button !== 0 || !game.user.isGM || this.tracingAccess) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const pointerId = event.pointerId;
+      const origin = { x: Number(data.x), y: Number(data.y) };
+      const pointAt = (x, y) => {
+        if (this.sceneMode) return scenePoint(canvas.stage.worldTransform, canvas.dimensions,
+          canvas.app.view.getBoundingClientRect(), x, y);
+        const rect = this.mapElement.getBoundingClientRect();
+        return { x: (x - rect.left) / rect.width, y: (y - rect.top) / rect.height };
+      };
+      const start = pointAt(event.clientX, event.clientY);
+      let next = null;
+      const move = current => {
+        if (current.pointerId !== pointerId || Math.hypot(current.clientX - event.clientX, current.clientY - event.clientY) < 3) return;
+        const point = pointAt(current.clientX, current.clientY);
+        next = { x: Math.max(0, Math.min(1, origin.x + point.x - start.x)),
+          y: Math.max(0, Math.min(1, origin.y + point.y - start.y)) };
+        marker.style.left = `${next.x * 100}%`;
+        marker.style.top = `${next.y * 100}%`;
+      };
+      const cleanup = () => {
+        document.removeEventListener("pointermove", move);
+        document.removeEventListener("pointerup", finish);
+        document.removeEventListener("pointercancel", cancel);
+        this.dossierDragCleanup = null;
+      };
+      const finish = current => {
+        if (current.pointerId !== pointerId) return;
+        cleanup();
+        if (next && this.editing === data && game.user.isGM && !this.tracingAccess) this.moveDossier(next);
+        if (this.editing === data) this.draw();
+      };
+      const cancel = current => {
+        if (current.pointerId !== pointerId) return;
+        cleanup();
+        if (this.editing === data) this.draw();
+      };
+      this.dossierDragCleanup?.();
+      this.dossierDragCleanup = cleanup;
+      document.addEventListener("pointermove", move);
+      document.addEventListener("pointerup", finish);
+      document.addEventListener("pointercancel", cancel);
+    });
+    marker.addEventListener("keydown", event => {
+      const offsets = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+      if (!offsets[event.key] || !game.user.isGM) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const [dx, dy] = offsets[event.key];
+      const step = event.shiftKey ? 10 : 1;
+      this.moveDossier({ x: Math.max(0, Math.min(1, Number(data.x) + dx * step / atlas.width)),
+        y: Math.max(0, Math.min(1, Number(data.y) + dy * step / atlas.height)) });
+      this.draw();
+      this.dossierMarker?.focus();
+    });
+    markers.append(marker);
   }
 
   drawRoads(overlay, atlas) {
@@ -499,6 +577,7 @@ export class DossierBoard extends Application {
     overlay.append(svg("circle", {
       cx: Number(this.editing.x) * atlas.width, cy: Number(this.editing.y) * atlas.height, r: 12, class: "nd-origin"
     }));
+    if (!this.tracingAccess) this.drawDossierMarker(markers, atlas);
     if (this.tracingAccess) this.roadNodes(markers, atlas, node => {
       this.editing.access.push({ x: node.x, y: node.y });
       this.editing.roadNode = node.id;
@@ -1144,6 +1223,10 @@ export class DossierBoard extends Application {
       const coordinate = field(axis, axis, { type: "number", min: 0, max: 1, step: "any", required: true });
       coordinate.addEventListener("input", () => {
         delete data.access; delete data.roadNode; this.tracingAccess = false;
+        const value = Number(coordinate.value);
+        if (this.dossierMarker && coordinate.value !== "" && Number.isFinite(value) && value >= 0 && value <= 1) {
+          this.dossierMarker.style[axis === "x" ? "left" : "top"] = `${value * 100}%`;
+        }
       });
     }
     data.notes ??= data.id ? privateNote(data.id)?.getFlag(ID, "note") ?? "" : "";
@@ -1243,6 +1326,8 @@ export class SceneDossierBoard extends DossierBoard {
 
   draw() {
     if (canvas.scene.background.src !== game.settings.get(ID, "mapImage")) {
+      this.dossierDragCleanup?.();
+      this.dossierMarker = null;
       this.mapElement = null;
       this.root.replaceChildren(element("p", { class: "nd-route-error", role: "status", text: t("sceneUpdating") }));
       return;
@@ -1251,6 +1336,7 @@ export class SceneDossierBoard extends DossierBoard {
   }
 
   async close() {
+    this.dossierDragCleanup?.();
     if (this.networkDraft?.canUndo) ui.notifications.warn(t("networkDraftLost"));
     this.ticker?.remove(this.tick);
     document.removeEventListener("pointerdown", this.pick, true);

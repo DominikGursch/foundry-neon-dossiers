@@ -20,6 +20,7 @@ class Node {
   setAttribute(key, value) { this.attributes[key] = value; if (key === "value") this.value = value; }
   removeAttribute(key) { delete this.attributes[key]; }
   remove() { this.isConnected = false; if (this.parentElement) this.parentElement.children = this.parentElement.children.filter(child => child !== this); }
+  focus() {}
   append(...children) { for (const child of children) child.parentElement = this; this.children.push(...children); }
   replaceChildren(...children) { this.children = [...children]; }
   addEventListener(event, action) { (this.events[event] ??= []).push(action); }
@@ -412,6 +413,68 @@ test("GM draws roads and explicit access paths without editing JSON", async () =
   assert.equal(saved.access.length, 3, "unsaved movement cannot change the stored access path");
   await board.close();
   settings.delete("atlases");
+});
+
+test("dossier markers do not obstruct street editing and dossier movement stays a draft until saved", async () => {
+  game.user = { id: "gm", isGM: true };
+  settings.set("mapImage", DEFAULT_MAP);
+  settings.delete("atlases");
+  const node = presetAtlas(DEFAULT_MAP).nodes[0];
+  const place = { ...EXAMPLES[0], x: 0.25, y: 0.3, roadNode: node.id,
+    access: [{ x: 0.25, y: 0.3 }, { x: node.x, y: node.y }] };
+  const entry = await JournalEntry.create({ name: place.title, ownership: { default: 2 },
+    flags: { [ID]: { place: structuredClone(place) } } });
+  const board = newBoard();
+  board.selected = entry.id;
+  board.draw();
+  const markerLayer = () => board.root.find(item => item.className === "nd-markers" &&
+    item.children.some(child => child.className?.includes("nd-marker")));
+  assert.ok(markerLayer());
+  await findButton(board.root, en.editNetwork).fire("click");
+  assert.equal(markerLayer().attributes.hidden, "", "dossier markers cannot intercept street editing");
+  await findButton(board.root, en.cancel).fire("click");
+  board.selected = entry.id;
+  board.draw();
+  await findButton(board.root, en.edit).fire("click");
+  const draftMarker = () => board.root.find(item => item.className?.includes("nd-dossier-draft"));
+  assert.ok(draftMarker(), "the editable position is visible on the map");
+  assert.equal(markerLayer().attributes.hidden, "", "saved marker does not obstruct the editing draft");
+  await draftMarker().fire("pointerdown", { button: 0, pointerId: 6, clientX: 250, clientY: 240 });
+  documentEvents.get("pointermove")({ pointerId: 6, clientX: 350, clientY: 320 });
+  documentEvents.get("pointercancel")({ pointerId: 6 });
+  assert.equal(board.editing.x, place.x, "cancelling a drag retains the original draft position");
+  assert.deepEqual(board.editing.access, place.access, "a cancelled drag preserves access");
+  assert.equal(documentEvents.has("pointermove"), false, "cancel removes drag listeners");
+  await draftMarker().fire("pointerdown", { button: 0, pointerId: 7, clientX: 250, clientY: 240 });
+  documentEvents.get("pointermove")({ pointerId: 7, clientX: 350, clientY: 320 });
+  documentEvents.get("pointerup")({ pointerId: 7, clientX: 350, clientY: 320 });
+  assert.equal(board.editing.x, 0.35);
+  assert.ok(Math.abs(board.editing.y - 0.4) < 1e-12);
+  assert.equal(board.editing.access, undefined);
+  assert.deepEqual(entry.getFlag(ID, "place"), place, "stored position and access remain unchanged before saving");
+  await findButton(board.root, en.cancel).fire("click");
+  assert.deepEqual(entry.getFlag(ID, "place"), place, "cancel restores the original position and access");
+
+  await findButton(board.root, en.edit).fire("click");
+  await draftMarker().fire("keydown", { key: "ArrowRight", shiftKey: true });
+  assert.equal(board.editing.x, 0.26);
+  const form = board.root.querySelector("form");
+  form.elements.namedItem("description").value = "Updated description";
+  await form.elements.namedItem("description").fire("input");
+  await form.fire("submit");
+  const saved = entry.getFlag(ID, "place");
+  assert.equal(saved.x, 0.26);
+  assert.equal(saved.description, "Updated description");
+  assert.equal(saved.access, undefined);
+  assert.equal(saved.roadNode, undefined);
+  assert.equal(entry.ownership.default, 2, "editing preserves sharing");
+  game.user = { id: "player", isGM: false };
+  board.draw();
+  assert.equal(board.root.find(item => item.className?.includes("nd-dossier-draft")), null);
+  assert.equal(board.root.find(item => item.textContent === en.edit), null);
+  game.user = { id: "gm", isGM: true };
+  await entry.delete();
+  await board.close();
 });
 
 test("scene HUD auto-mounts, follows the canvas, handles picks and drops revoked routes without journal windows", async () => {

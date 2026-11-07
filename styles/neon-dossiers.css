@@ -79,7 +79,8 @@
 .neon-dossiers .nd-network-crossing { fill: none; stroke: #ff4655; stroke-width: 2; pointer-events: none; }
 .neon-dossiers .nd-origin { fill: #08090d; stroke: var(--nd-cyan); stroke-width: 7; r: 15; }
 .neon-dossiers .nd-markers { position: absolute; inset: 0; pointer-events: none; }
-.neon-dossiers .nd-marker { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; width: 28px; min-height: 28px; height: 28px; padding: 0; border: 2px solid var(--nd-category); color: #08090d; background: var(--nd-category); font: 800 10px/24px ui-monospace, Consolas, monospace; border-radius: 50%; box-shadow: 0 2px 6px #000b; z-index: 1; }
+.neon-dossiers .nd-marker { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; width: 16px; min-height: 16px; height: 16px; padding: 0; border: 1px solid var(--nd-category); color: #08090d; background: var(--nd-category); font: 800 8px/14px ui-monospace, Consolas, monospace; border-radius: 50%; box-shadow: 0 2px 6px #000b; z-index: 1; }
+.neon-dossiers .nd-marker::before { content: ""; position: absolute; inset: -5px; }
 .neon-dossiers .nd-marker::after { content: attr(data-label); position: absolute; left: 50%; bottom: calc(100% + 7px); transform: translateX(-50%); background: #0c0d12; border: 1px solid var(--nd-category); padding: 3px 8px; color: #fff; white-space: nowrap; opacity: 0; pointer-events: none; font-size: 11px; }
 .neon-dossiers .nd-marker:is(:hover,:focus-visible,.nd-selected) { outline: 2px solid #fff; outline-offset: 3px; z-index: 3; background: var(--nd-category); color: #08090d; }
 .neon-dossiers .nd-marker:is(:hover,:focus-visible,.nd-selected)::after { opacity: 1; }

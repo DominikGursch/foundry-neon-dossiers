@@ -91,6 +91,8 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
   oder mit den Pfeiltasten verschieben. Erst **Dossier speichern** übernimmt
   die neue Position. Ein vorhandener Straßenzugang muss nach dem Verschieben
   gegebenenfalls neu gezeichnet werden; **Abbrechen** erhält die alten Daten.
+  Auch beim Anlegen oder Bearbeiten lässt sich die Karte durch Ziehen
+  verschieben; ein einzelner Klick setzt den Marker.
 - Einen District auswählen: Rechts erscheinen Threat Level, Fraktionen und
   die für diese Ansicht sichtbaren POIs.
 - **Route / Orte** öffnen, einen Startort und eine Fortbewegung auswählen

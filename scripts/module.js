@@ -415,7 +415,7 @@ export class DossierBoard extends Application {
     let drag;
     let dragged = false;
     picture.addEventListener("pointerdown", event => {
-      if (event.button !== 0 || this.pickingOrigin || this.editing || this.roadDraft) return;
+      if (event.button !== 0 || this.pickingOrigin || this.roadDraft) return;
       drag = { x: event.clientX, y: event.clientY, left: mapScroll.scrollLeft, top: mapScroll.scrollTop };
       dragged = false;
       picture.setPointerCapture(event.pointerId);
@@ -1302,9 +1302,66 @@ export class SceneDossierBoard extends DossierBoard {
         if (p.x < 0 || p.x > 1 || p.y < 0 || p.y > 1) return;
         event.preventDefault();
         event.stopImmediatePropagation();
+        if (game.user.isGM && this.editing && !this.pickingOrigin) {
+          this.beginDossierCanvasGesture(event);
+          return;
+        }
         this.pickPoint(p);
       } catch (error) { report(error); }
     };
+  }
+
+  beginDossierCanvasGesture(event) {
+    this.scenePickCleanup?.();
+    const data = this.editing;
+    const pointerId = event.pointerId;
+    const rect = canvas.app.view.getBoundingClientRect();
+    const { a, b, c, d, tx, ty } = canvas.stage.worldTransform;
+    const matrix = { a, b, c, d, tx, ty };
+    const dimensions = canvas.dimensions;
+    const center = scenePoint(matrix, dimensions, rect, rect.left + rect.width / 2, rect.top + rect.height / 2);
+    const centerX = center.x * dimensions.sceneWidth + (dimensions.sceneX ?? 0);
+    const centerY = center.y * dimensions.sceneHeight + (dimensions.sceneY ?? 0);
+    const determinant = matrix.a * matrix.d - matrix.b * matrix.c;
+    let dragged = false;
+    const cleanup = () => {
+      document.removeEventListener("pointermove", move, true);
+      document.removeEventListener("pointerup", finish, true);
+      document.removeEventListener("pointercancel", cancel, true);
+      this.scenePickCleanup = null;
+    };
+    const move = current => {
+      if (current.pointerId !== pointerId) return;
+      if (this.editing !== data || !game.user.isGM || !canvas.ready) { cleanup(); return; }
+      const dx = current.clientX - event.clientX, dy = current.clientY - event.clientY;
+      if (!dragged && Math.hypot(dx, dy) < 5) return;
+      dragged = true;
+      current.preventDefault();
+      current.stopImmediatePropagation();
+      try {
+        canvas.pan({ x: centerX - (matrix.d * dx - matrix.c * dy) / determinant,
+          y: centerY - (matrix.a * dy - matrix.b * dx) / determinant, scale: canvas.stage.scale.x });
+      } catch (error) { cleanup(); report(error); }
+    };
+    const finish = current => {
+      if (current.pointerId !== pointerId) return;
+      cleanup();
+      current.preventDefault();
+      current.stopImmediatePropagation();
+      if (dragged || this.editing !== data || !game.user.isGM || !canvas.ready) return;
+      try {
+        const point = scenePoint(canvas.stage.worldTransform, canvas.dimensions,
+          canvas.app.view.getBoundingClientRect(), current.clientX, current.clientY);
+        if (point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1) this.pickPoint(point);
+      } catch (error) { report(error); }
+    };
+    const cancel = current => {
+      if (current.pointerId === pointerId) cleanup();
+    };
+    this.scenePickCleanup = cleanup;
+    document.addEventListener("pointermove", move, true);
+    document.addEventListener("pointerup", finish, true);
+    document.addEventListener("pointercancel", cancel, true);
   }
 
   get rendered() { return Boolean(this.root?.isConnected); }
@@ -1337,6 +1394,7 @@ export class SceneDossierBoard extends DossierBoard {
 
   async close() {
     this.dossierDragCleanup?.();
+    this.scenePickCleanup?.();
     if (this.networkDraft?.canUndo) ui.notifications.warn(t("networkDraftLost"));
     this.ticker?.remove(this.tick);
     document.removeEventListener("pointerdown", this.pick, true);

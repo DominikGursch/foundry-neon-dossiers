@@ -134,7 +134,7 @@ globalThis.canvas = {
   ready: false, scene: null, notes: { placeables: [] },
   app: { view, ticker: { add: action => ticks.add(action), remove: action => ticks.delete(action) } },
   stage: { scale: { x: 1 }, worldTransform: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 } },
-  async animatePan({ x, y, scale = this.stage.scale.x }) {
+  pan({ x, y, scale = this.stage.scale.x }) {
     const matrix = this.stage.worldTransform;
     const rect = view.getBoundingClientRect();
     x ??= (rect.width / 2 - matrix.tx) / matrix.a;
@@ -142,6 +142,9 @@ globalThis.canvas = {
     scale = Math.max(0.1, Math.min(4, scale));
     Object.assign(matrix, { a: scale, d: scale, tx: rect.width / 2 - x * scale, ty: rect.height / 2 - y * scale });
     this.stage.scale.x = scale;
+  },
+  async animatePan(options) {
+    this.pan(options);
   }
 };
 

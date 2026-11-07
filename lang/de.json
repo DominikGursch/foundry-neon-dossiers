@@ -17,7 +17,7 @@
     "permissions": "Berechtigungen", "edit": "Dossier bearbeiten", "delete": "Dossier löschen",
     "confirmDelete": "Diesen Ort und seine privaten SL-Notizen dauerhaft löschen?",
     "title": "Titel", "description": "Beschreibung als Klartext", "image": "Lokaler Illustrationspfad (optional)",
-    "browse": "Lokale Dateien durchsuchen", "positionHelp": "Marker ziehen, auf die Karte klicken oder Koordinaten eingeben. Pfeiltasten bewegen den Marker; Umschalt vergrößert den Schritt. Beim Verschieben wird ein vorhandener Straßenzugang entfernt und muss gegebenenfalls neu gezeichnet werden. Erst Speichern übernimmt die Änderungen.",
+    "browse": "Lokale Dateien durchsuchen", "positionHelp": "Karte zum Verschieben ziehen; klicken setzt den Marker. Den Marker selbst ziehen oder mit Pfeiltasten bewegen; Umschalt vergrößert den Schritt. Beim Verschieben wird ein vorhandener Straßenzugang entfernt und muss gegebenenfalls neu gezeichnet werden. Erst Speichern übernimmt die Änderungen.",
     "moveDossierMarker": "Dossiermarker verschieben",
     "x": "Horizontale Position (0-1)", "y": "Vertikale Position (0-1)",
     "save": "Dossier speichern", "cancel": "Abbrechen", "missingPlace": "Dieses Dossier existiert nicht mehr.",

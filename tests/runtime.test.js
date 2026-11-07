@@ -132,7 +132,7 @@ globalThis.JournalEntry = {
 globalThis.Dialog = { confirm: async () => true };
 globalThis.DocumentOwnershipConfig = class extends Application {};
 
-const { DossierBoard } = await import("../scripts/module.js");
+const { DossierBoard, SceneDossierBoard } = await import("../scripts/module.js");
 const newBoard = () => {
   const board = new DossierBoard();
   board.root = new Node("div");
@@ -548,6 +548,39 @@ test("scene HUD auto-mounts, follows the canvas, handles picks and drops revoked
   assert.equal(ticks.size, 1, "repeated scene loads do not accumulate listeners");
   hooks.get("canvasTearDown")();
   assert.equal(ticks.size, 0);
+  delete globalThis.canvas;
+});
+
+test("dossier canvas gestures pan without moving the draft and click places it", async () => {
+  game.user = { id: "gm", isGM: true };
+  settings.set("mapImage", DEFAULT_MAP);
+  const pans = [];
+  globalThis.canvas = {
+    ready: true, scene: { background: { src: DEFAULT_MAP } },
+    dimensions: { sceneX: 100, sceneY: 80, sceneWidth: 1000, sceneHeight: 800 },
+    app: { view: new Node("canvas") },
+    stage: { scale: { x: 0.5 }, worldTransform: { a: 0.5, b: 0, c: 0, d: 0.5, tx: 30, ty: -20 } },
+    pan(value) { pans.push(value); }
+  };
+  const board = new SceneDossierBoard();
+  board.root = new Node("div");
+  board.editing = { ...EXAMPLES[0], x: 0.3, y: 0.3 };
+  const pointer = (x, y) => ({ button: 0, target: canvas.app.view, pointerId: 7, clientX: x, clientY: y,
+    preventDefault() {}, stopImmediatePropagation() {} });
+  board.pick(pointer(240, 120));
+  documentEvents.get("pointermove")(pointer(340, 170));
+  documentEvents.get("pointerup")(pointer(340, 170));
+  assert.deepEqual(pans.at(-1), { x: 740, y: 740, scale: 0.5 });
+  assert.equal(board.editing.x, 0.3, "panning does not reposition the dossier");
+  assert.equal(board.editing.y, 0.3);
+  assert.equal(documentEvents.has("pointermove"), false);
+  board.pick(pointer(240, 120));
+  documentEvents.get("pointerup")(pointer(240, 120));
+  assert.deepEqual({ x: board.editing.x, y: board.editing.y }, { x: 0.32, y: 0.25 });
+  board.pick(pointer(240, 120));
+  documentEvents.get("pointercancel")(pointer(240, 120));
+  assert.equal(documentEvents.has("pointerup"), false);
+  await board.close();
   delete globalThis.canvas;
 });
 

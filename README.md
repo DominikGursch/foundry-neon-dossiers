@@ -14,6 +14,8 @@ categories and open dossiers from markers or the place list. GMs can create,
 edit and delete places, select local map/dossier images, position markers by
 dragging them in the dossier editor, clicking the map or entering coordinates, and share or revoke
 dossier access. English and German interface translations are included.
+While editing, drag the map background to pan without moving the marker;
+click the background to place it.
 Starter descriptions are in English.
 
 The module overlays the **actual Foundry map scene**, not a separate dossier

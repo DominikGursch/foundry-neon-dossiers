@@ -78,11 +78,13 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
 
 ## 5. Die Demo ausprobieren
 
-- Die **Kartenauswahl** in der SL-Ansicht wechselt zwischen Atlas mit
-  District-Namen, Atlas ohne District-Namen, Community-Karte und Harbor Grid.
+- Demo und Modul enthalten ausschließlich **Community Night City 2045**;
+  die übrigen Karten und die Kartenauswahl sind entfernt.
 - Eine neue oder zurückgesetzte Demo startet auf der **Community-Karte ohne
-  Dossiers**. Bereits im Browser gespeicherte Kartenauswahl und Daten bleiben
-  erhalten. Optional **SL-WERKZEUGE > Beispielorte anlegen** verwenden und die gewünschten
+  Dossiers**. Community-Daten bleiben erhalten; alte Kartenkonfigurationen
+  und automatisch angelegte Beispiele anderer Karten werden entfernt.
+  Eigene Dossiers werden nicht auf eine andere Karte umgerechnet.
+  Optional **SL-WERKZEUGE > Beispieldossiers hinzufügen** bestätigen und die gewünschten
   Dossiers freigeben. Die Community-Karte hat keine aufgedruckten POI-Marker
   und keine schwarzen Seitenstreifen. Sie startet ohne interaktive POIs;
   mit **SL-WERKZEUGE > Ort hinzufügen** legt die Spielleitung eigene Orte an.
@@ -97,7 +99,14 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
   Auch beim Anlegen oder Bearbeiten lässt sich die Karte durch Ziehen
   verschieben; ein einzelner Klick setzt den Marker.
 - Einen District auswählen: Rechts erscheinen Threat Level, Fraktionen und
-  die für diese Ansicht sichtbaren POIs.
+  die für diese Ansicht sichtbaren POIs. Eine kräftigere rote Fläche und ein
+  animierter Leuchtrand zeigen den District; reduzierte Bewegung deaktiviert die Animation.
+- Unter **Karte und Districts** Eckpunkte direkt ziehen, kleine Zwischenpunkte
+  zum Einfügen anklicken und ausgewählte Ecken mit **Entf** oder **Eckpunkt löschen**
+  entfernen. **Rückgängig / Wiederholen** korrigieren Änderungen.
+  Beim Zeichnen setzt ein Klick eine Ecke; Ziehen verschiebt die Karte.
+  Auf den ersten Punkt klicken oder **Grenze fertig** wählen, um die Form
+  zu schließen. Erst **Konfiguration speichern** übernimmt die Änderungen.
 - **Route / Orte** öffnen, einen Startort und eine Fortbewegung auswählen
   und anschließend einen Zielmarker anklicken oder das Ziel im Menü auswählen.
   Die Route wird direkt auf der simulierten Kartenszene dargestellt, ohne

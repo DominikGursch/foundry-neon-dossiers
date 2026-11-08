@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { atlasData, DEFAULT_ATLAS, emptyAtlas, findRoute, distance, ROAD_SNAP_KM } from "../scripts/atlas.js";
-import { DEFAULT_MAP, EXAMPLES } from "../scripts/model.js";
+import { atlasData, emptyAtlas, findRoute, distance, ROAD_SNAP_KM } from "../scripts/atlas.js";
+import { DEFAULT_MAP } from "../scripts/model.js";
+import { EXAMPLES, DEFAULT_ATLAS } from "./fixtures.js";
 
 const map = () => atlasData({
   ...emptyAtlas(DEFAULT_MAP), width: 1000, height: 500, kmAcross: 10,

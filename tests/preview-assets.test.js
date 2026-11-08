@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFile, readdir } from "node:fs/promises";
+import { readFile, readdir, mkdir, writeFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import { previewRevision, versionPreviewHtml, versionPreviewModule } from "../tools/preview-assets.mjs";
 
 test("preview revisions change with source content and consistently version the module graph", async () => {
@@ -30,4 +31,12 @@ test("preview revisions change with source content and consistently version the 
       assert.ok(source.includes(`\${lang}.json?v=${revision}`));
     }
   }
+});
+
+test("preview rebuild removes stale map assets and ships only Community", async () => {
+  const directory = "dist/preview/modules/neon-dossiers/assets";
+  await mkdir(directory, { recursive: true });
+  await writeFile(`${directory}/removed-test-map.svg`, "<svg/>");
+  execFileSync(process.execPath, ["tools/preview.mjs"], { stdio: "pipe" });
+  assert.deepEqual(await readdir(directory), ["night-city-community-unmarked.webp"]);
 });

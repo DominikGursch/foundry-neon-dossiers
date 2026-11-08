@@ -13,7 +13,7 @@ const notify = (kind, message) => {
   document.querySelector("#notifications").append(node);
   setTimeout(() => node.remove(), 10000);
 };
-const fire = (name, ...args) => { for (const action of hooks.get(name) ?? []) action(...args); };
+const fire = (name, ...args) => Promise.all((hooks.get(name) ?? []).map(action => action(...args)));
 const save = () => {
   localStorage.setItem(storageKey, JSON.stringify({
     settings: Object.fromEntries(settings),
@@ -106,7 +106,7 @@ Object.assign(globalThis, {
       const help = document.createElement("p");
       help.textContent = "Demo: bundled images only. Upload additional authorized maps through Foundry's file picker.";
       dialog.append(help);
-      for (const preset of [...MAP_PRESETS, ...["exchange", "commons", "relay"].map(name => ({ label: name, image: `modules/${ID}/assets/${name}.svg` }))]) {
+      for (const preset of MAP_PRESETS) {
         const choice = document.createElement("button");
         choice.textContent = game.i18n.localize(`ND.${preset.label}`);
         choice.addEventListener("click", () => { this.options.callback(preset.image); dialog.close(); });
@@ -241,9 +241,9 @@ async function main() {
     save();
   }
   await import(`./modules/${ID}/scripts/module.js`);
-  fire("init");
+  await fire("init");
+  await fire("ready");
   await game.modules.get(ID).api.open();
-  fire("ready");
   document.querySelector("#role").addEventListener("change", event => {
     game.user = { id: event.target.value, isGM: event.target.value === "gm" };
     fire("updateUser", game.user);

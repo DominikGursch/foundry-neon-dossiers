@@ -2,16 +2,16 @@
 
 An original, system-independent **places and dossiers** module for Foundry VTT.
 Unofficial compatibility with Cyberpunk RED; no rules or statblocks are
-included. Attributed Night City maps are bundled as separate third-party
+included. The attributed Community Night City map is bundled as a third-party
 assets, not relicensed under the module's MIT license.
 
 **Neon Dossiers is unofficial content provided under the Homebrew Content Policy of R. Talsorian Games and is not approved or endorsed by RTG. This content references materials that are the property of R. Talsorian Games and its licensees.**
 
 ## City navigation: v0.2.0
 
-Browse Night City on the supplied Atlas or community map, search places, filter four
+Browse Night City on the supplied Community Night City 2045 map, search places, filter four
 categories and open dossiers from markers or the place list. GMs can create,
-edit and delete places, select local map/dossier images, position markers by
+edit and delete places, select local dossier images, position markers by
 dragging them in the dossier editor, clicking the map or entering coordinates, and share or revoke
 dossier access. English and German interface translations are included.
 While editing, drag the map background to pan without moving the marker;
@@ -32,25 +32,26 @@ and scanlines reinforce the RED terminal look. The effects do not intercept
 input, animate, distort map coordinates or cover the dossier/editor cards.
 High-contrast display preferences disable the monitor overlays.
 
-**Included maps:** Night City Atlas with district names, Atlas with streets
-only, and Ced23Ric's community Night City 2045 map. The original Harbor Grid
-fictional map remains available. Choose a map from the GM's **Map selection**
-dropdown. Atlas presets include 24 district annotations and eight starter
-dossiers; the community preset has 17 district annotations and seven
-separately positioned starter dossiers. This is not a full Atlas POI import.
-The community map is the **default for unconfigured worlds and fresh demos**.
-Saved map selections and custom configurations are not overwritten.
+**Only included map:** Ced23Ric's Community Night City 2045 map, with
+17 district annotations and seven optional example dossiers. There is no map
+selection or replacement picker. Atlas variants, Harbor Grid and their production
+data/assets have been removed from both the module and preview.
+On upgrade, the active GM removes other saved map configurations and automatically
+created examples belonging to those maps. Community configuration and dossiers
+are preserved. Manually created dossiers for removed maps are retained in storage
+but never reassigned to Community coordinates; untagged legacy dossiers remain
+visible for compatibility.
 The community image is the requested marker-free version, cropped to remove
 the black side panels. It starts without POIs; the GM can add dossiers manually.
-Starter dossiers are optional and created only via **Add starter places**.
-This image depicts an intact City Center rather than the Hot Zone; use the
-official Atlas if your campaign needs the later geography.
+Example dossiers are optional and created only via **Add example dossiers**,
+after confirmation. They start private; existing examples are not duplicated.
+This image depicts an intact City Center rather than the later Atlas Hot Zone.
 
 **Threat levels, preset scales, boundaries and partial roads are campaign
 approximations**, not official ratings or complete street data. Sources,
 attributions and exact map modifications are recorded in
 [`docs/ASSET_SOURCES.md`](docs/ASSET_SOURCES.md). Copyright credits are also
-visible beneath the map. Atlas credits remain inside the images; credits
+visible beneath the map. Historical Atlas provenance is retained; credits
 removed from the community sidebars are reproduced in the shipped notices.
 
 **Target: Foundry VTT v12 only.** This prerelease uses core v12 Application,
@@ -87,8 +88,8 @@ when the scene loads; players do not need a hotkey, journal directory or window.
 Opening the module from another scene as a player reports that the GM must
 activate the map; it does not force a scene switch.
 
-As GM, open **GM TOOLS > Add starter places** once to create private
-starter dossiers for the selected map.
+As GM, open **GM TOOLS > Add example dossiers** to optionally create seven
+private Community examples such as Afterlife.
 Select one and click **Share with all players** when ready. Each player opens
 their dossier cards independently; selection and routes are not broadcast.
 
@@ -150,7 +151,7 @@ between 0 and 1 (left/top = 0, right/bottom = 1). Save creates a core journal
 document. Choose a marker/list item to read or edit its dossier. The journal's
 module flags, not its blank core journal page view, hold the public dossier.
 
-**Local map image** uses Foundry's file picker. Upload your permitted images
+**Dossier illustration** uses Foundry's file picker. Upload your permitted images
 using Foundry's own file browser, then select them. Accepted formats are PNG,
 JPEG, GIF, WebP, AVIF and SVG. Paths must be relative to Foundry's served
 user-data root, e.g. `worlds/my-world/maps/district.webp`. Remote URLs, data
@@ -160,15 +161,12 @@ For hosted storage that only supplies absolute cloud URLs, copy an authorized
 image into local user-data storage instead; external storage URLs are not
 supported in this foundation.
 
-New dossiers are associated with their map family. The two Atlas variants
-share coordinates; the community map and Harbor Grid use separate datasets.
-Switching presets hides other maps' tagged POIs without deleting them.
+New dossiers are associated with Community coordinates.
 Legacy untagged dossiers remain visible for backward compatibility; edit and
 save them on the intended map to associate them with it.
-There is one active world map, with one module-managed scene. No drag-to-move,
-custom sockets, bulk dossier import/export or compendium is included.
-Map configurations are saved per map family, so switching away and back
-preserves customized scale, district and road settings.
+There is one Community world map, with one module-managed scene. Custom sockets,
+bulk dossier import/export and compendiums are not included.
+The Community configuration preserves customized scale, district and road settings.
 
 ## Foundry scene and player access
 
@@ -254,12 +252,16 @@ paths: check and retrace those after replacing a saved graph.
 
 Use **Map and districts** as GM to edit dimensions and scale with form fields
 and to create, edit or remove districts and draw their boundaries on the map.
-Choosing a bundled preset loads that map's own configuration.
-Choosing an unconfigured custom image deliberately starts with **no roads or
-districts**, instead of reusing unrelated geometry. Set `width` and `height` to the image's
-pixel dimensions and `kmAcross` to the real horizontal span. The default 10 km
-span for Harbor Grid is only a fictional demo scale. The Atlas defaults to a
-12 km horizontal span and the cropped community map to approximately 12.54 km
+District corners move live while dragging. Small midpoint handles insert corners;
+select a corner and press Delete or use **Delete corner** to remove it. Undo/redo
+and Ctrl/Cmd+Z (Shift to redo) restore shape edits. While drawing, click adds a
+corner and drag pans. Click the first corner or **Finish boundary** to close,
+with at least three corners. Redrawing requires confirmation and remains undoable.
+Saving applies the draft; cancelling preserves the original boundaries.
+Selected districts have a stronger red fill, glowing border and moving border
+dashes; reduced-motion preferences keep the highlight static.
+Set `kmAcross` to the campaign horizontal span. The cropped Community map defaults
+to approximately 12.54 km
 (the earlier full-image 18 km assumption adjusted for the crop); these are explicitly
 campaign assumptions, not official distances. The Atlas does not define fixed
 dimensions for Night City. All atlas fields are public; never put
@@ -348,11 +350,10 @@ Software, translations, documentation and original starter prose: **MIT**,
 see the existing [`LICENSE`](LICENSE). Reuse, modification and commercial use
 are allowed with the MIT notice retained.
 
-All four original SVG files under `assets/`: **CC BY 4.0**, attributed to
-**DominikGursch**. See [`LICENSES/ASSETS.md`](LICENSES/ASSETS.md) for scope,
-license links and a ready-to-use attribution. No publisher fan-policy
-restrictions are added to the MIT software license. The three
-`night-city-*.webp` maps are **third-party assets, not MIT or CC BY**. They are
+The four former original SVG assets have been removed; their historical CC BY 4.0
+attribution remains in [`LICENSES/ASSETS.md`](LICENSES/ASSETS.md).
+No publisher fan-policy restrictions are added to the MIT software license.
+The sole remaining Community WebP map is **third-party artwork, not MIT or CC BY**. It is
 included following the repository owner's confirmed attribution-based use;
 that does not grant downstream users unrestricted reuse rights.
 

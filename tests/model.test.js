@@ -1,15 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { ID, DEFAULT_MAP, EXAMPLES, imagePath, placeData, noteText, readablePlaces, filterPlaces } from "../scripts/model.js";
+import { ID, DEFAULT_MAP, imagePath, placeData, noteText, readablePlaces, filterPlaces } from "../scripts/model.js";
+import { EXAMPLES } from "./fixtures.js";
 import { crc32, zipFiles, build } from "../tools/package.mjs";
 
-test("starter places have valid bounded data and original local assets", async () => {
+test("test dossiers have valid bounded data", () => {
   for (const example of EXAMPLES) {
     assert.deepEqual(placeData(example), example);
-    const source = await readFile(new URL(`../${example.image.replace(`modules/${ID}/`, "")}`, import.meta.url), "utf8");
-    assert.match(source, /<svg/);
-    assert.doesNotMatch(source, /<script|https?:\/\/(?!www.w3.org)/);
   }
   assert.equal(imagePath(DEFAULT_MAP), DEFAULT_MAP);
 });
@@ -100,7 +98,8 @@ test("ZIP CRC and structure are deterministic and package excludes development f
   assert.ok(packed.some(([name]) => name === "module.json"));
   assert.ok(packed.some(([name]) => name === "LICENSES/ASSETS.md"));
   assert.ok(packed.some(([name]) => name === "docs/ASSET_SOURCES.md"));
-  assert.equal(packed.filter(([name]) => /^assets\/night-city-.*\.webp$/.test(name)).length, 3);
+  assert.deepEqual(packed.filter(([name]) => name.startsWith("assets/")).map(([name]) => name),
+    ["assets/night-city-community-unmarked.webp"], "only the requested Community map is shipped");
   assert.ok(packed.every(([name]) => !/^(tests|tools|\.git|README)/.test(name)));
   const zip = await readFile(output);
   let offset = 0;

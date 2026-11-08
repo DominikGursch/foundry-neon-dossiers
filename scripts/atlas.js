@@ -1,4 +1,4 @@
-import { DEFAULT_MAP, imagePath, noteText } from "./model.js";
+import { imagePath, noteText } from "./model.js";
 
 export const MODES = { walk: 5, bike: 35, car: 35, av: 100 };
 export const THREATS = ["low", "moderate", "high", "extreme"];
@@ -73,33 +73,6 @@ export function atlasData(input) {
 export function emptyAtlas(image) {
   return { image, width: 1000, height: 800, kmAcross: 10, nodes: [], edges: [], districts: [], transportVersion: 2 };
 }
-
-const nodes = [];
-for (const [row, y] of [0.1875, 0.45, 0.7, 0.9].entries()) {
-  for (const [column, x] of [0.18, 0.41, 0.58].entries()) nodes.push({ id: `r${row}c${column}`, x, y });
-}
-const edges = [];
-for (let row = 0; row < 4; row++) {
-  for (let column = 0; column < 3; column++) {
-    if (column < 2) edges.push({ from: `r${row}c${column}`, to: `r${row}c${column + 1}`, modes: ["walk", "bike", "car"] });
-    if (row < 3) edges.push({ from: `r${row}c${column}`, to: `r${row + 1}c${column}`, modes: ["walk", "bike", "car"] });
-  }
-}
-
-export const DEFAULT_ATLAS = atlasData({
-  ...emptyAtlas(DEFAULT_MAP), nodes, edges,
-  districts: [
-    { id: "west-bank", name: "West Bank", threat: "moderate", gangs: ["Lantern Collective"],
-      description: "Original demo fiction: repair markets and crowded residential blocks along the western avenues.",
-      polygon: [{ x: 0.02, y: 0.12 }, { x: 0.41, y: 0.12 }, { x: 0.41, y: 0.65 }, { x: 0.02, y: 0.65 }] },
-    { id: "garden-reach", name: "Garden Reach", threat: "low", gangs: [],
-      description: "Original demo fiction: rooftop gardens and community spaces beside the channel.",
-      polygon: [{ x: 0.41, y: 0.12 }, { x: 0.68, y: 0.12 }, { x: 0.68, y: 0.65 }, { x: 0.41, y: 0.65 }] },
-    { id: "relay-ward", name: "Relay Ward", threat: "high", gangs: ["Signal Runners"],
-      description: "Original demo fiction: old signal infrastructure, warehouses and unlit service lanes.",
-      polygon: [{ x: 0.02, y: 0.65 }, { x: 0.63, y: 0.65 }, { x: 0.63, y: 0.96 }, { x: 0.02, y: 0.96 }] }
-  ]
-});
 
 export function distance(atlas, a, b) {
   return Math.hypot((a.x - b.x) * atlas.kmAcross, (a.y - b.y) * atlas.kmAcross * atlas.height / atlas.width);

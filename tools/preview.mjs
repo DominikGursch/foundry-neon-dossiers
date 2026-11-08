@@ -1,4 +1,4 @@
-import { cp, mkdir, copyFile, readFile, readdir, writeFile } from "node:fs/promises";
+import { cp, mkdir, copyFile, readFile, readdir, writeFile, rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { previewRevision, versionPreviewHtml, versionPreviewModule } from "./preview-assets.mjs";
@@ -14,6 +14,7 @@ const files = [
 const contents = new Map(await Promise.all(files.map(async name => [name, await readFile(path.join(root, name))])));
 const revision = previewRevision(contents);
 await mkdir(target, { recursive: true });
+await rm(path.join(target, "modules", "neon-dossiers", "assets"), { recursive: true, force: true });
 for (const name of ["index.html", "preview.js", "preview.css"]) {
   await copyFile(path.join(root, "preview", name), path.join(target, name));
 }

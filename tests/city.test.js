@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { ID, CITY_MAP, CITY_STREETS, COMMUNITY_MAP, DEFAULT_MAP, EXAMPLES, mapFamily, placesOnMap, placeData } from "../scripts/model.js";
+import { ID, COMMUNITY_MAP, mapFamily, placesOnMap, placeData } from "../scripts/model.js";
 import { atlasData, findRoute } from "../scripts/atlas.js";
-import { MAP_PRESETS, CITY_EXAMPLES, COMMUNITY_EXAMPLES, NIGHT_CITY_ATLAS, COMMUNITY_ATLAS, presetAtlas, starterPlaces } from "../scripts/city.js";
+import { MAP_PRESETS, COMMUNITY_EXAMPLES, COMMUNITY_ATLAS, presetAtlas, starterPlaces } from "../scripts/city.js";
 import { currentAtlas } from "../scripts/scene.js";
 import { inspectNetwork } from "../scripts/network.js";
 import { communityPoint } from "../scripts/community-roads.js";
@@ -27,7 +27,7 @@ test("every map preset has connected roads; legacy starter anchors do not imply 
     const atlas = presetAtlas(image);
     assert.deepEqual(atlasData(atlas), atlas);
     assert.equal(atlas.image, image);
-    const examples = image === DEFAULT_MAP ? EXAMPLES : starterPlaces(image);
+    const examples = starterPlaces(image);
     for (const place of examples) {
       assert.deepEqual(placeData(place), place);
       assert.equal(mapFamily(place.mapImage), mapFamily(image));
@@ -49,9 +49,8 @@ test("every map preset has connected roads; legacy starter anchors do not imply 
     atlas.nodes.length = 0;
     assert.ok(presetAtlas(image).nodes.length, "preset calls return independent copies");
   }
-  assert.equal(NIGHT_CITY_ATLAS.districts.length, 24);
+  assert.deepEqual(MAP_PRESETS.map(preset => preset.image), [COMMUNITY_MAP]);
   assert.equal(COMMUNITY_ATLAS.districts.length, 17);
-  assert.equal(CITY_EXAMPLES.length, 8);
   assert.equal(COMMUNITY_EXAMPLES.length, 7);
   assert.equal(presetAtlas("worlds/test/custom.webp"), null);
 });
@@ -87,9 +86,9 @@ test("expanded community network has mode-connected local streets and no acciden
   const walk = findRoute(COMMUNITY_ATLAS, university, park, "walk");
   const car = findRoute(COMMUNITY_ATLAS, university, park, "car");
   assert.ok(car.distanceKm > walk.distanceKm, "park paths must not act as driving shortcuts");
-  const before = structuredClone(NIGHT_CITY_ATLAS);
+  const before = structuredClone(COMMUNITY_ATLAS);
   presetAtlas(COMMUNITY_MAP).nodes[0].x = 0;
-  assert.deepEqual(NIGHT_CITY_ATLAS, before, "Community work leaves Atlas data unchanged");
+  assert.deepEqual(COMMUNITY_ATLAS, before, "preset callers cannot mutate the canonical graph");
 });
 
 test("cross-bay trips use the depicted bridge, not a nearest-node connector", () => {
@@ -108,15 +107,13 @@ test("cross-bay trips use the depicted bridge, not a nearest-node connector", ()
   assert.ok(detour.roadPoints.some(point => point.id === "east-bridge"), "remaining land corridor is used explicitly");
   assert.ok(detour.distanceKm > findRoute(a, node("glen-s"), node("rancho-n"), "car").distanceKm);
 });
-test("Atlas variants share POIs without leaking Harbor or community coordinates", () => {
-  const legacy = { ...EXAMPLES[0] };
+test("removed map coordinates never leak onto Community; untagged legacy places remain compatible", () => {
+  const legacy = { ...COMMUNITY_EXAMPLES[0] };
   delete legacy.mapImage;
-  const places = [...CITY_EXAMPLES, ...COMMUNITY_EXAMPLES, ...EXAMPLES, legacy];
-  assert.deepEqual(placesOnMap(places, CITY_MAP), [...CITY_EXAMPLES, legacy]);
-  assert.deepEqual(placesOnMap(places, CITY_STREETS), [...CITY_EXAMPLES, legacy]);
+  const removed = { ...COMMUNITY_EXAMPLES[0], mapImage: "worlds/old/map.webp" };
+  const places = [...COMMUNITY_EXAMPLES, removed, legacy];
   assert.deepEqual(placesOnMap(places, COMMUNITY_MAP), [...COMMUNITY_EXAMPLES, legacy]);
-  assert.deepEqual(placesOnMap(places, DEFAULT_MAP), [...EXAMPLES, legacy]);
-  assert.throws(() => placeData({ ...CITY_EXAMPLES[0], mapImage: "https://example.com/map.webp" }));
+  assert.throws(() => placeData({ ...COMMUNITY_EXAMPLES[0], mapImage: "https://example.com/map.webp" }));
 });
 
 test("marker-free community crop transforms every coordinate without changing the map scale", () => {
@@ -136,29 +133,26 @@ test("marker-free community crop transforms every coordinate without changing th
     (904 / 1600 - 549 / 3615) * 18) < 1e-12, "crop retains distance from the new western edge");
 });
 
-test("map configurations preserve legacy edits and separate customized map families", () => {
+test("Community configurations survive while removed map selections and geometry are ignored", () => {
   const settings = new Map();
   globalThis.game = { settings: { get: (_id, name) => settings.get(name) } };
   assert.equal(currentAtlas().image, COMMUNITY_MAP, "unconfigured worlds default to the marker-free community map");
-  settings.set("atlas", { ...presetAtlas(DEFAULT_MAP), kmAcross: 9 });
-  settings.set("mapImage", DEFAULT_MAP);
+  settings.set("atlas", { ...presetAtlas(COMMUNITY_MAP), kmAcross: 9 });
+  settings.set("mapImage", COMMUNITY_MAP);
   assert.equal(currentAtlas().kmAcross, 9, "legacy world settings are preserved");
-  settings.set("mapImage", CITY_STREETS);
-  assert.equal(currentAtlas().kmAcross, 12, "unrelated legacy geometry is not reused");
+  settings.set("mapImage", "worlds/old/map.webp");
+  assert.equal(currentAtlas().image, COMMUNITY_MAP);
+  settings.set("atlas", { ...presetAtlas(COMMUNITY_MAP), image: "worlds/old/map.webp", kmAcross: 12 });
+  assert.equal(currentAtlas().kmAcross, COMMUNITY_ATLAS.kmAcross, "old geography is not reused");
   settings.set("atlases", {
-    [CITY_MAP]: { ...presetAtlas(CITY_MAP), kmAcross: 14 },
+    "worlds/old/map.webp": { ...presetAtlas(COMMUNITY_MAP), image: "worlds/old/map.webp", kmAcross: 14 },
     [COMMUNITY_MAP]: { ...presetAtlas(COMMUNITY_MAP), kmAcross: 21 }
   });
-  assert.equal(currentAtlas().image, CITY_STREETS);
-  assert.equal(currentAtlas().kmAcross, 14);
+  assert.equal(currentAtlas().image, COMMUNITY_MAP);
   settings.set("mapImage", COMMUNITY_MAP);
   assert.equal(currentAtlas().kmAcross, 21);
-  settings.set("mapImage", CITY_MAP);
-  assert.equal(currentAtlas().kmAcross, 14, "switching back restores customization");
-  settings.set("mapImage", DEFAULT_MAP);
-  assert.equal(currentAtlas().kmAcross, 9, "untouched legacy families still work");
   settings.set("mapImage", "worlds/test/new.webp");
-  assert.deepEqual(currentAtlas().nodes, []);
+  assert.equal(currentAtlas().kmAcross, 21, "Community customization stays selected");
 });
 
 function webpDimensions(bytes) {
@@ -182,7 +176,7 @@ function webpDimensions(bytes) {
 
 test("bundled map dimensions match presets and every map is documented", async () => {
   const sources = await readFile(new URL("../docs/ASSET_SOURCES.md", import.meta.url), "utf8");
-  for (const image of [CITY_MAP, CITY_STREETS, COMMUNITY_MAP]) {
+  for (const { image } of MAP_PRESETS) {
     const file = image.replace(`modules/${ID}/`, "");
     const bytes = await readFile(new URL(`../${file}`, import.meta.url));
     const atlas = presetAtlas(image);

@@ -2,9 +2,10 @@
 
 Copyright (c) 2026 DominikGursch.
 
-All four SVG files under `assets/` are licensed under the **Creative Commons
+The four original SVG files formerly under `assets/` were licensed under the **Creative Commons
 Attribution 4.0 International Public License (CC BY 4.0)**, not the repository's
-MIT software license:
+MIT software license. They were removed from the module and demo on 8 November
+2026; this historical license record does not license the remaining Community map:
 
 - `harbor-grid.svg` - Harbor Grid, original fictional schematic district map
 - `exchange.svg` - Lantern Exchange
@@ -32,7 +33,7 @@ Suggested attribution (adjust the modification statement as appropriate):
 
 Harbor Grid is not Night City and does not reproduce a published map.
 This license covers **only the four SVG files listed above**.
-The `night-city-*.webp` maps also shipped under `assets/` are third-party
-material and are **not CC BY 4.0 or MIT**. Their owners, sources, modifications
+The sole remaining `night-city-community-unmarked.webp` map under `assets/` is third-party
+material and is **not CC BY 4.0 or MIT**. Its owners, sources, modifications
 and rights boundary are recorded in `docs/ASSET_SOURCES.md` and
 `THIRD_PARTY_NOTICES.md`.

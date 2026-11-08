@@ -62,7 +62,12 @@
 .neon-dossiers .nd-map > img:active { cursor: grabbing; }
 .neon-dossiers .nd-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .neon-dossiers .nd-district-zone { fill: transparent; stroke: transparent; }
-.neon-dossiers .nd-active-zone { fill: #ff4655; fill-opacity: .15; stroke: #ff6a77; stroke-width: 5; stroke-dasharray: 16 10; }
+.neon-dossiers .nd-active-zone { fill: #ff4655; fill-opacity: .3; stroke: #ffb0b7; stroke-width: 4; stroke-dasharray: 14 8; filter: drop-shadow(0 0 4px #ff4655); animation: nd-district-scan 3s linear infinite; }
+@keyframes nd-district-scan { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -44; } }
+.neon-dossiers .nd-district-outline { stroke: #ffb0b7; stroke-width: 3; }
+.neon-dossiers .nd-district-cursor { stroke: #ffb0b7; stroke-dasharray: 6 6; stroke-opacity: .7; }
+.neon-dossiers .nd-district-midpoint { width: 10px; height: 10px; min-height: 10px; background: #ffb0b7; border: 2px solid #08090d; cursor: copy; }
+.neon-dossiers .nd-district-midpoint:hover { background: #fff; outline: 2px solid #ff4655; }
 .neon-dossiers .nd-route-line { fill: none; stroke: var(--nd-cyan); stroke-width: 8; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 0 3px #000); }
 .neon-dossiers .nd-route-access { stroke: #f5bb69; stroke-dasharray: 18 12; stroke-width: 5; }
 .neon-dossiers .nd-route-flight { stroke: #c998ff; stroke-dasharray: 12 12; }

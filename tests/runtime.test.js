@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { ID, DEFAULT_MAP, CITY_MAP, CITY_STREETS, COMMUNITY_MAP, EXAMPLES } from "../scripts/model.js";
+import { ID, DEFAULT_MAP, COMMUNITY_MAP } from "../scripts/model.js";
+import { EXAMPLES, DEFAULT_ATLAS } from "./fixtures.js";
 import { presetAtlas } from "../scripts/city.js";
 
 class Node {
@@ -160,10 +161,10 @@ test("v12 lifecycle, GM CRUD, sharing and player revocation with mocked DOM/core
   const gm = newBoard();
   gm.draw();
   await findButton(gm.root, en.examples).fire("click");
-  assert.equal(game.journal.contents.length, 3);
+  assert.equal(game.journal.contents.length, 7);
   assert.ok(game.journal.contents.every(entry => entry.ownership.default === 0));
   await findButton(gm.root, en.examples).fire("click");
-  assert.equal(game.journal.contents.length, 3, "starter creation is idempotent");
+  assert.equal(game.journal.contents.length, 7, "example creation is idempotent");
 
   const place = game.journal.contents[0];
   gm.selected = place.id;
@@ -253,7 +254,8 @@ test("GM note updates replace grants; a failed note save keeps the form and does
 
 test("districts and route origins respect visibility and drop revoked cached locations", async () => {
   game.user = { id: "gm", isGM: true };
-  const atlas = presetAtlas(DEFAULT_MAP);
+  const atlas = structuredClone(DEFAULT_ATLAS);
+  settings.set("atlases", { [DEFAULT_MAP]: atlas });
   const start = { ...EXAMPLES[0], x: atlas.nodes[0].x, y: atlas.nodes[0].y };
   const end = { ...EXAMPLES[2], x: atlas.nodes.at(-1).x, y: atlas.nodes.at(-1).y };
   const a = await JournalEntry.create({ name: "Start", ownership: { default: 2 }, flags: { [ID]: { place: start } } });
@@ -273,8 +275,8 @@ test("districts and route origins respect visibility and drop revoked cached loc
   board.draw();
   assert.ok(contains(board.root.find(node => node.className === "nd-panel"), en.noRoads),
     "route errors remain visible in the selected dossier");
-  settings.delete("atlases");
-  board.district = "relay-ward";
+  settings.set("atlases", { [DEFAULT_MAP]: atlas });
+  board.district = "the-glen";
   board.selected = null;
   board.draw();
   assert.ok(contains(board.root, en.threat));
@@ -290,37 +292,33 @@ test("districts and route origins respect visibility and drop revoked cached loc
   await board.close();
 });
 
-test("map switching keeps starter creation idempotent and saves separate customized configurations", async () => {
+test("Community examples stay idempotent and configuration stays a draft", async () => {
   game.user = { id: "gm", isGM: true };
   const board = newBoard();
-  settings.set("mapImage", CITY_MAP);
+  settings.set("mapImage", COMMUNITY_MAP);
   board.draw();
   await findButton(board.root, en.examples).fire("click");
-  const count = () => game.journal.contents.filter(entry => entry.getFlag(ID, "place")?.mapImage === CITY_MAP).length;
-  assert.equal(count(), 8);
-  settings.set("mapImage", CITY_STREETS);
+  const count = () => game.journal.contents.filter(entry => entry.getFlag(ID, "example") !== undefined &&
+    entry.getFlag(ID, "place")?.mapImage === COMMUNITY_MAP).length;
+  assert.equal(count(), 7);
   board.draw();
   await findButton(board.root, en.examples).fire("click");
-  assert.equal(count(), 8, "Atlas image variants do not duplicate starters");
+  assert.equal(count(), 7, "existing examples are not duplicated");
+  const originalConfirm = Dialog.confirm;
+  Dialog.confirm = async () => false;
+  try { await findButton(board.root, en.examples).fire("click"); }
+  finally { Dialog.confirm = originalConfirm; }
+  assert.equal(count(), 7, "declining the example action never changes journals");
   await findButton(board.root, en.configureAtlas).fire("click");
   let form = board.root.querySelector("form");
   assert.equal(form.querySelector("textarea"), null, "configuration does not expose structured data");
   form.elements.namedItem("kmAcross").value = "14";
   await form.elements.namedItem("kmAcross").fire("input");
-  assert.notEqual(settings.get("atlases")?.[CITY_MAP]?.kmAcross, 14, "edits remain a draft until saved");
+  assert.notEqual(settings.get("atlases")?.[COMMUNITY_MAP]?.kmAcross, 14, "edits remain a draft until saved");
   await form.fire("submit");
-  assert.equal(settings.get("atlases")[CITY_MAP].kmAcross, 14);
-  settings.set("mapImage", COMMUNITY_MAP);
-  board.draw();
-  await findButton(board.root, en.examples).fire("click");
-  assert.equal(game.journal.contents.filter(entry => entry.getFlag(ID, "place")?.mapImage === COMMUNITY_MAP).length, 7);
-  await findButton(board.root, en.configureAtlas).fire("click");
-  form = board.root.querySelector("form");
-  form.elements.namedItem("kmAcross").value = "21";
-  await form.elements.namedItem("kmAcross").fire("input");
-  await form.fire("submit");
-  assert.equal(settings.get("atlases")[COMMUNITY_MAP].kmAcross, 21);
-  assert.equal(settings.get("atlases")[CITY_MAP].kmAcross, 14, "saving another map does not replace prior edits");
+  assert.equal(settings.get("atlases")[COMMUNITY_MAP].kmAcross, 14);
+  assert.equal(board.root.find(node => node.attributes["aria-label"] === en.mapPreset), null, "no map selection");
+  assert.equal(board.root.find(node => node.textContent === en.mapImage), null, "no map replacement picker");
   await board.close();
   settings.set("mapImage", DEFAULT_MAP);
 });
@@ -341,10 +339,10 @@ test("zoom preserves an unsaved dossier draft; invalid map data fails visibly", 
   assert.deepEqual(board.viewport, { left: 225, top: 325 }, "zoom preserves the viewport center");
   assert.equal(board.root.querySelector("form").elements.namedItem("title").value, "Unsaved title");
   assert.equal(board.root.querySelector("form").elements.namedItem("notes").value, "Unsaved private note");
-  settings.set("mapImage", "https://invalid.example/map.png");
+  settings.set("atlases", { [COMMUNITY_MAP]: { ...presetAtlas(COMMUNITY_MAP), width: 0 } });
   const originalConsole = console.error;
   console.error = () => {};
-  try { board.draw(); } finally { console.error = originalConsole; settings.set("mapImage", DEFAULT_MAP); }
+  try { board.draw(); } finally { console.error = originalConsole; settings.delete("atlases"); }
   assert.ok(contains(board.root, en.invalidAtlas));
   assert.ok(!contains(board.root, "Unsaved private note"));
   assert.equal(notifications.at(-1)[0], "error");
@@ -372,6 +370,61 @@ test("districts can be added and drawn on the map without structured-data editin
   settings.delete("atlases");
 });
 
+test("district corners drag live, insert/delete, undo/redo and cancel without changing saved geometry", async () => {
+  game.user = { id: "gm", isGM: true };
+  settings.delete("atlases");
+  const original = presetAtlas(COMMUNITY_MAP).districts[0].polygon;
+  const board = newBoard();
+  board.draw();
+  await findButton(board.root, en.configureAtlas).fire("click");
+  const chooser = board.root.querySelector("form").find(node => node.tag === "select" && node.attributes["aria-label"] === en.districts);
+  chooser.value = board.atlasDraft.districts[0].id;
+  await chooser.fire("change");
+  const district = board.atlasDraft.districts[0];
+  const corner = () => board.root.find(node => node.className?.includes("nd-district-point"));
+  board.mapElement.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1000, height: 1000 });
+  const p = original[0];
+  await corner().fire("pointerdown", { button: 0, pointerId: 3, clientX: p.x * 1000, clientY: p.y * 1000 });
+  documentEvents.get("pointermove")({ pointerId: 3, clientX: p.x * 1000 + 50, clientY: p.y * 1000 + 50 });
+  assert.ok(Math.abs(district.polygon[0].x - (p.x + .05)) < 1e-10, "corner previews before release");
+  assert.deepEqual(presetAtlas(COMMUNITY_MAP).districts[0].polygon, original, "preview cannot mutate the preset");
+  documentEvents.get("pointerup")({ pointerId: 3 });
+  const dragged = structuredClone(district.polygon);
+  board.mapElement.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1000, height: 1000 });
+  await corner().fire("pointerdown", { button: 0, pointerId: 4, clientX: 400, clientY: 400 });
+  documentEvents.get("pointermove")({ pointerId: 4, clientX: 450, clientY: 450 });
+  documentEvents.get("pointercancel")({ pointerId: 4 });
+  assert.deepEqual(district.polygon, dragged, "pointer cancellation restores the last completed edit");
+  await findButton(board.root, en.undo).fire("click");
+  assert.deepEqual(district.polygon, original);
+  await findButton(board.root, en.redo).fire("click");
+  assert.deepEqual(district.polygon, dragged);
+  const midpoint = board.root.find(node => node.className?.includes("nd-district-midpoint"));
+  await midpoint.fire("click");
+  assert.equal(district.polygon.length, original.length + 1);
+  await findButton(board.root, en.deleteDistrictPoint).fire("click");
+  assert.deepEqual(district.polygon, dragged);
+  while (district.polygon.length > 3) {
+    await corner().fire("click");
+    await findButton(board.root, en.deleteDistrictPoint).fire("click");
+  }
+  await corner().fire("click");
+  assert.equal(findButton(board.root, en.deleteDistrictPoint).disabled, true, "closed shapes retain at least three corners");
+  await findButton(board.root, en.cancel).fire("click");
+  assert.equal(settings.get("atlases"), undefined, "cancel never persists the district draft");
+  assert.deepEqual(presetAtlas(COMMUNITY_MAP).districts[0].polygon, original);
+  board.configuring = true; board.atlasDraft = { districts: [district] };
+  board.districtEditing = district.id; board.districtDrawing = true;
+  district.polygon = Array.from({ length: 100 }, () => ({ x: .5, y: .5 }));
+  board.pickPoint({ x: .6, y: .6 });
+  assert.equal(district.polygon.length, 100);
+  assert.equal(notifications.at(-1)[1], en.districtPointLimit, "limit produces visible feedback");
+  await board.close();
+  assert.equal(documentEvents.has("pointerup"), false);
+  game.user = { id: "player", isGM: false };
+  assert.throws(() => board.changeDistrictPolygon(district, []), /Only a GM/);
+});
+
 test("GM draws roads and explicit access paths without editing JSON", async () => {
   game.user = { id: "gm", isGM: true };
   settings.delete("atlases");
@@ -395,16 +448,17 @@ test("GM draws roads and explicit access paths without editing JSON", async () =
   board.pickPoint({ x: 0.25, y: 0.3 });
   await findButton(board.root, en.traceAccess).fire("click");
   board.pickPoint({ x: 0.22, y: 0.3 });
-  await findButton(board.root, "r0c0").fire("click");
+  const roadNode = atlas.nodes[0].id;
+  await findButton(board.root, roadNode).fire("click");
   assert.equal(board.tracingAccess, false);
   assert.equal(board.editing.access.length, 3);
   const form = board.root.querySelector("form");
-  assert.equal(board.editing.roadNode, "r0c0");
+  assert.equal(board.editing.roadNode, roadNode);
   await form.fire("submit");
   const saved = game.journal.get(board.selected).flags[ID].place;
   assert.equal(saved.title, "Traced place");
-  assert.equal(saved.roadNode, "r0c0");
-  assert.deepEqual(saved.access, [{ x: 0.25, y: 0.3 }, { x: 0.22, y: 0.3 }, { x: 0.18, y: 0.1875 }]);
+  assert.equal(saved.roadNode, roadNode);
+  assert.deepEqual(saved.access, [{ x: 0.25, y: 0.3 }, { x: 0.22, y: 0.3 }, { x: atlas.nodes[0].x, y: atlas.nodes[0].y }]);
   await findButton(board.root, en.edit).fire("click");
   assert.notEqual(board.editing.access, saved.access, "editing uses an isolated access draft");
   const coordinate = board.root.querySelector("form").elements.namedItem("x");
@@ -422,7 +476,8 @@ test("dossier markers do not obstruct street editing and dossier movement stays 
   game.user = { id: "gm", isGM: true };
   settings.set("mapImage", DEFAULT_MAP);
   settings.delete("atlases");
-  const node = presetAtlas(DEFAULT_MAP).nodes[0];
+  const atlas = presetAtlas(DEFAULT_MAP);
+  const node = atlas.nodes[0];
   const place = { ...EXAMPLES[0], x: 0.25, y: 0.3, roadNode: node.id,
     access: [{ x: 0.25, y: 0.3 }, { x: node.x, y: node.y }] };
   const entry = await JournalEntry.create({ name: place.title, ownership: { default: 2 },
@@ -460,13 +515,13 @@ test("dossier markers do not obstruct street editing and dossier movement stays 
 
   await findButton(board.root, en.edit).fire("click");
   await draftMarker().fire("keydown", { key: "ArrowRight", shiftKey: true });
-  assert.equal(board.editing.x, 0.26);
+  assert.equal(board.editing.x, 0.25 + 10 / atlas.width);
   const form = board.root.querySelector("form");
   form.elements.namedItem("description").value = "Updated description";
   await form.elements.namedItem("description").fire("input");
   await form.fire("submit");
   const saved = entry.getFlag(ID, "place");
-  assert.equal(saved.x, 0.26);
+  assert.equal(saved.x, 0.25 + 10 / atlas.width);
   assert.equal(saved.description, "Updated description");
   assert.equal(saved.access, undefined);
   assert.equal(saved.roadNode, undefined);
@@ -594,7 +649,7 @@ test("network editor drafts per-mode directions and confirms preset replacement"
   customized.kmAcross = 17;
   customized.districts[0].name = "Custom district";
   customized.nodes.push({ id: "custom-node", x: 0.1, y: 0.1 });
-  settings.set("atlases", { [DEFAULT_MAP]: customized, [CITY_MAP]: { ...presetAtlas(CITY_MAP), kmAcross: 19 } });
+  settings.set("atlases", { [DEFAULT_MAP]: customized });
   const journalCount = game.journal.contents.length;
   const board = newBoard();
   board.draw();
@@ -624,7 +679,6 @@ test("network editor drafts per-mode directions and confirms preset replacement"
   assert.equal(updated.districts[0].name, "Custom district");
   assert.deepEqual(updated.nodes, presetAtlas(DEFAULT_MAP).nodes);
   assert.deepEqual(updated.edges, presetAtlas(DEFAULT_MAP).edges);
-  assert.equal(settings.get("atlases")[CITY_MAP].kmAcross, 19);
   assert.equal(game.journal.contents.length, journalCount, "loading a street preset must never seed places");
   game.user = { id: "player", isGM: false };
   board.draw();

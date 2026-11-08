@@ -5,8 +5,8 @@
 | Material | License / owner | Coverage |
 | --- | --- | --- |
 | Module software, original short summaries, translations and documentation | MIT, see `LICENSE` | Does not license third-party artwork, trademarks or underlying game IP |
-| Four original SVG assets | CC BY 4.0, DominikGursch | Exact inventory and attribution in `LICENSES/ASSETS.md` |
-| Two Night City Atlas WebP map variants | Saga MacKenzie / © 2025 R. Talsorian Games | Third-party maps, not MIT or CC BY; original sources and modifications in `docs/ASSET_SOURCES.md` |
+| Four former original SVG assets (removed 8 November 2026) | CC BY 4.0, DominikGursch | Historical inventory and attribution in `LICENSES/ASSETS.md`; no longer shipped |
+| Two former Night City Atlas WebP variants (removed 8 November 2026) | Saga MacKenzie / © 2025 R. Talsorian Games | Historical provenance in `docs/ASSET_SOURCES.md`; no longer shipped |
 | Marker-free community Night City WebP map | Ced23Ric / Ced Riggs, Rodhlann, Writer's Cthulhu, J. Gray / R. Talsorian Games | Third-party map, not MIT or CC BY; sidebars cropped at the user's request; removed image credits transcribed below and in `docs/ASSET_SOURCES.md` |
 | Foundry VTT | Its respective owners | Host application required; not included or relicensed |
 | Cyberpunk RED and related game IP | R. Talsorian Games and its licensees | Referenced by the module and included third-party maps; not relicensed |
@@ -21,11 +21,11 @@ or the original CC BY artwork.
 The four SVG assets were drawn directly as original geometric SVG code for this
 project. They use generic shapes, system sans-serif fonts and an independent
 teal/amber palette. No external fonts, CDN, art packs or assets from other
-map modules are bundled. The three newly included WebP maps are separate
-third-party material. Atlas image credits remain embedded; community image
+map modules are bundled. Only the marker-free Community WebP map remains shipped.
+It is separate third-party material. Historical Atlas credits are retained in
+the provenance record; Community image
 credits from its removed sidebars are reproduced in these shipped notices.
-The three Harbor Grid starter descriptions are new fictional text, not rulebook
-extracts or statblocks.
+The former Harbor Grid examples, graph and polygons are no longer shipped.
 
 This is an independently authored implementation of maps, places, categories,
 dossiers, districts, routing and permissioned sharing. The README and repository
@@ -38,19 +38,17 @@ implementation, not a pixel-identical clone. This is **not a claim of strict
 clean-room development**: an earlier coordinating session had previously seen
 that project's code.
 
-Harbor Grid's graph, polygons, faction names and summaries remain fictional.
 Night City's independently written annotations reference Atlas facts;
-polygons and partial road networks are hand-positioned per map.
+polygons and the partial road network are hand-positioned for Community.
 Threat levels and geographic scales are campaign assumptions, not official
 ratings. Detailed provenance is included in `docs/ASSET_SOURCES.md`.
 
-## Included map sources
+## Map sources and historical references
 
-Night City Atlas by Saga MacKenzie / R. Talsorian Games:
+Historical Atlas reference by Saga MacKenzie / R. Talsorian Games (not bundled):
 https://rtalsoriangames.com/wp-content/uploads/2025/01/RTG-CPR-DLC-NightCityAtlasv1.01.pdf
 
-Official map archive (street-only and district-name JPG variants converted
-to WebP, resized; no cropping):
+Former official map archive source (converted WebP variants are no longer bundled):
 https://rtalsoriangames.com/wp-content/uploads/2025/01/Night-City-2045-Atlas-Maps-1.01.zip
 
 Community map by Ced23Ric / Ced Riggs, based on work by Rodhlann,

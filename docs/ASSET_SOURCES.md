@@ -1,12 +1,12 @@
 # Asset sources and modifications
 
-Source verification: **6 November 2026**. Maps are served locally from this
-module, including its GitHub Pages demo; no third-party map is hotlinked at
-runtime. Atlas image credits remain embedded. Credits and policy text removed
+Source verification: **6 November 2026**. Inventory updated **8 November 2026**:
+only the Community map is now bundled in the module and demo. No map is hotlinked
+at runtime. Historical Atlas provenance is retained below. Credits and policy text removed
 from the community map's sidebars are reproduced here and in the installed
 `THIRD_PARTY_NOTICES.md`, as well as the map's visible source link.
 
-## Night City Atlas: included
+## Night City Atlas: historical reference, no longer bundled
 
 Publisher: **R. Talsorian Games**. Cartography: **Saga MacKenzie**.
 Writing/design: **J Gray**. Copyright © 2025 R. Talsorian Games, Inc.
@@ -18,14 +18,15 @@ Cyberpunk is a registered trademark of CD Projekt Red S.A.
 - Official map archive linked on that index:
   https://rtalsoriangames.com/wp-content/uploads/2025/01/Night-City-2045-Atlas-Maps-1.01.zip
 
-| Bundled file | Original file inside the archive | Modification |
+| Formerly bundled file (removed) | Original file inside the archive | Historical modification |
 | --- | --- | --- |
 | `assets/night-city-atlas-districts.webp` | `Night City 2045 Atlas Maps/Night City 2045 Atlas w District Names.jpg` | 6600 × 10200 JPG resized to 3600 × 5564 and encoded as WebP, quality 88 |
 | `assets/night-city-atlas-streets.webp` | `Night City 2045 Atlas Maps/Night City 2045 Atlas Street Names Only.jpg` | Same resize and encoding |
 
-Neither file is cropped, repainted or rebranded. These two variants share
-geometry and therefore share the module's POI coordinates and map configuration.
-The source PDF and map archive are not bundled in their entirety.
+Both images and their separate road graph, polygons and example coordinates
+were removed on 8 November 2026 at the user's request. Their historical
+conversion involved no cropping, repainting or rebranding. The PDF remains a
+reference for annotation facts, not a bundled asset.
 
 ## Community map: included
 
@@ -96,9 +97,9 @@ The repository's MIT code license and CC BY license for original SVGs cannot
 grant rights to these third-party maps. This record is provenance, not a
 legal opinion or a claim of publisher endorsement.
 
-## Original module assets
+## Original module assets: removed
 
-| Included file | Author/source | License |
+| Formerly included file (removed) | Author/source | License |
 | --- | --- | --- |
 | `assets/harbor-grid.svg` | DominikGursch, original fictional schematic map | CC BY 4.0 |
 | `assets/exchange.svg` | DominikGursch, original Lantern Exchange illustration | CC BY 4.0 |
@@ -109,30 +110,32 @@ Original asset source repository:
 https://github.com/DominikGursch/foundry-neon-dossiers/tree/main/assets
 
 Scope, license link and suggested attribution: `LICENSES/ASSETS.md`.
-These SVGs are unchanged. They depict original fiction, not Night City.
+These four SVGs and their production example data were removed on 8 November
+2026. Their historical license and attribution remain recorded; they are not
+part of the current module or demo.
 
 ## District, POI and route annotations
 
 `scripts/city.js` contains independently written short district/POI summaries,
-district names and faction facts referenced to the Atlas. Eight starter POIs
-reference Atlas identifiers/pages in their descriptions; seven have separate
-anchors on the community map. This is **not the full Atlas location catalog**.
+district names and faction facts referenced to the Atlas. Seven optional example
+POIs reference Atlas identifiers/pages in their descriptions and use Community
+anchors. This is **not the full Atlas location catalog**.
 The Atlas `Full.jpg` variant was consulted to position its POI labels but is
 not bundled. The community anchors were read from the earlier labeled image,
 then transformed to the marker-free crop: x=(oldX×3615−549)/2519, y=oldY.
 The same transform applies to district polygons and road nodes. Its distinct
 asset path prevents old full-image settings/POIs from being reused on the crop.
 
-District polygons and street nodes were manually positioned on **each** map
+District polygons and street nodes were manually positioned on the Community map
 and are approximate overview annotations, not surveyed or exhaustive GIS
-data. The two maps have different geography and **do not** share coordinates.
-The Atlas preset includes 24 district annotations; the community preset
-includes 17. Community districts may not match the later Atlas's boundaries.
+data. The removed Atlas maps have different geography; their coordinates are never
+reused on Community. The Community preset includes 17 district annotations.
+Community districts may not match the later Atlas's boundaries.
 
 **Threat levels are editable campaign defaults, not official Atlas ratings.**
-The preset horizontal spans (Atlas: 12 km; cropped community: approximately
+The preset horizontal span (cropped Community: approximately
 12.54 km, computed as 18×2519/3615 to preserve the earlier full-image scale)
-are campaign assumptions, not a canonical geographic scale. The Atlas itself explains on
+is a campaign assumption, not a canonical geographic scale. The Atlas itself explains on
 p. 3 that Night City is not assigned fixed dimensions.
 Roads cover a selection of streets and bridges, not every street.
 `scripts/community-roads.js` expands this specific marker-free image's
@@ -151,7 +154,7 @@ the source image does not establish traffic rules or access permissions.
 Morro Rock and Executive Zone interiors and many minor streets remain
 unmapped. The data are hand-positioned campaign approximations, **not an
 exhaustive street survey or a claim that every visible way was recognized**.
-No bundled image or district/POI coordinate was changed for this extension.
+The remaining Community image and preset district/POI coordinates are unchanged.
 Endpoints only snap within 20 m of a mapped path. Vehicle trips may follow
 the walking graph to/from a vehicle-compatible street; these walking legs
 are separately counted and marked in amber. Unmapped access paths must
@@ -164,8 +167,8 @@ China location, before *Tales of the RED: Hope Reborn*. The Community City
 Center description matches the intact center on the selected image, not the
 later Atlas Hot Zone. Saved user-authored descriptions are not rewritten.
 
-`scripts/atlas.js` and the Harbor Grid starter prose retain their original
-fictional demo data. No external fonts, icon packs or JavaScript/CDN
+Harbor Grid production data have been removed. Synthetic fixtures used by tests
+are not packaged in the module or demo. No external fonts, icon packs or JavaScript/CDN
 dependencies are required by the runtime or preview.
 
 ## Interface reference

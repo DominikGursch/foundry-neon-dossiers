@@ -1,12 +1,10 @@
 export const ID = "neon-dossiers";
-export const DEFAULT_MAP = `modules/${ID}/assets/harbor-grid.svg`;
-export const CITY_MAP = `modules/${ID}/assets/night-city-atlas-districts.webp`;
-export const CITY_STREETS = `modules/${ID}/assets/night-city-atlas-streets.webp`;
 export const COMMUNITY_MAP = `modules/${ID}/assets/night-city-community-unmarked.webp`;
+export const DEFAULT_MAP = COMMUNITY_MAP;
 export const CATEGORIES = ["community", "commerce", "transit", "mystery"];
 
 export function mapFamily(image) {
-  return [CITY_MAP, CITY_STREETS].includes(image) ? CITY_MAP : image;
+  return image;
 }
 
 export function placesOnMap(places, image) {
@@ -99,15 +97,3 @@ export function filterPlaces(places, query, category) {
   return places.filter(place => (!category || place.category === category) &&
     `${place.title}\n${place.description}`.toLocaleLowerCase().includes(needle));
 }
-
-export const EXAMPLES = [
-  { title: "Lantern Exchange", category: "commerce", x: 0.3, y: 0.32, district: "west-bank", mapImage: DEFAULT_MAP,
-    description: "A cooperatively run repair market. A noticeboard offers odd jobs, missing parcels, and invitations to the next neighborhood supper.",
-    image: `modules/${ID}/assets/exchange.svg` },
-  { title: "Tidal Commons", category: "community", x: 0.68, y: 0.42, district: "garden-reach", mapImage: DEFAULT_MAP,
-    description: "A rooftop garden overlooking the channel. Residents meet here to trade seeds and decide how to spend the district's maintenance fund.",
-    image: `modules/${ID}/assets/commons.svg` },
-  { title: "Relay Nine", category: "mystery", x: 0.47, y: 0.73, district: "relay-ward", mapImage: DEFAULT_MAP,
-    description: "An unused signal station still broadcasts a three-note melody at dusk. Nobody remembers who pays its power bill.",
-    image: `modules/${ID}/assets/relay.svg` }
-];

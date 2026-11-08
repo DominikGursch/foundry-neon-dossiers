@@ -145,17 +145,24 @@ as an authoritative obstacle detector. Explicit at-grade junction decisions
 split reviewed crossing segments; unreviewed crossings are never joined
 automatically. Northern/southern bridge alignments and legacy street anchors
 were corrected against this image, independently of unchanged POI positions.
-The Lake Park paths permit walking/cycling only as a campaign assumption.
-Other included roads default to bidirectional walking/cycling/driving:
+The Lake Park paths now permit walking only as a campaign assumption.
+Other included roads default to bidirectional walking/motorcycle/driving:
 the source image does not establish traffic rules or access permissions.
 Morro Rock and Executive Zone interiors and many minor streets remain
 unmapped. The data are hand-positioned campaign approximations, **not an
 exhaustive street survey or a claim that every visible way was recognized**.
 No bundled image or district/POI coordinate was changed for this extension.
-Endpoints only snap within 20 m of a mapped street. Longer access paths must
-be traced explicitly by the GM and are separately marked in amber; legacy
+Endpoints only snap within 20 m of a mapped path. Vehicle trips may follow
+the walking graph to/from a vehicle-compatible street; these walking legs
+are separately counted and marked in amber. Unmapped access paths must
+be traced explicitly by the GM; legacy
 POI anchors and their road-node assignments do not certify a walkable entrance.
 Neither card descriptions nor routing replaces the original books.
+Optional starter prose is kept concise for the Agent interface, with Atlas
+references retained. The Forlorn Hope example refers to its earlier Little
+China location, before *Tales of the RED: Hope Reborn*. The Community City
+Center description matches the intact center on the selected image, not the
+later Atlas Hot Zone. Saved user-authored descriptions are not rewritten.
 
 `scripts/atlas.js` and the Harbor Grid starter prose retain their original
 fictional demo data. No external fonts, icon packs or JavaScript/CDN

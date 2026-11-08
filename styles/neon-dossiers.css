@@ -66,8 +66,10 @@
 .neon-dossiers .nd-route-line { fill: none; stroke: var(--nd-cyan); stroke-width: 8; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 0 3px #000); }
 .neon-dossiers .nd-route-access { stroke: #f5bb69; stroke-dasharray: 18 12; stroke-width: 5; }
 .neon-dossiers .nd-route-flight { stroke: #c998ff; stroke-dasharray: 12 12; }
-.neon-dossiers [data-route-mode="bike"] .nd-route-line:not(.nd-route-access) { stroke: #96dfb0; }
-.neon-dossiers [data-route-mode="car"] .nd-route-line:not(.nd-route-access) { stroke: #7ab6ff; }
+.neon-dossiers .nd-route-line.nd-route-flow { stroke: #fff; stroke-width: 2; stroke-dasharray: 5 15; animation: nd-route-forward 1.2s linear infinite; filter: none; }
+@keyframes nd-route-forward { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -20; } }
+.neon-dossiers [data-route-mode="bike"] .nd-route-line:not(.nd-route-access,.nd-route-flow) { stroke: #96dfb0; }
+.neon-dossiers [data-route-mode="car"] .nd-route-line:not(.nd-route-access,.nd-route-flow) { stroke: #7ab6ff; }
 .neon-dossiers .nd-road-guide { fill: none; stroke: #ff6571; stroke-width: 3; stroke-opacity: .8; }
 .neon-dossiers .nd-draft-point { fill: #ff6571; stroke: #08090d; stroke-width: 2; }
 .neon-dossiers .nd-road-node { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; font-size: 0; padding: 0; width: 12px; height: 12px; min-height: 12px; border: 1px solid #08090d; background: var(--nd-red); }
@@ -171,6 +173,7 @@
 .nd-scene-hud :is(.nd-marker,.nd-road-node) { transform: translate(-50%, -50%) scale(var(--nd-inverse-scale, 1)); }
 .nd-scene-hud :is(.nd-route-line,.nd-road-guide,.nd-district-zone) { vector-effect: non-scaling-stroke; stroke-width: 3; }
 .nd-scene-hud .nd-route-access { stroke-width: 2; stroke-dasharray: 8 6; }
+.nd-scene-hud .nd-route-line.nd-route-flow { stroke-width: 2; }
 .nd-scene-hud .nd-road-guide { stroke-width: 1.5; }
 .nd-scene-hud .nd-road-review { vector-effect: non-scaling-stroke; stroke-width: 3; }
 .nd-scene-hud .nd-road-review:is(:hover,:focus-visible,.nd-road-selected) { stroke-width: 6; }

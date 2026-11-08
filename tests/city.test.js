@@ -8,6 +8,20 @@ import { currentAtlas } from "../scripts/scene.js";
 import { inspectNetwork } from "../scripts/network.js";
 import { communityPoint } from "../scripts/community-roads.js";
 
+test("Community park starts reach the southern bridge by walking to a vehicle street", () => {
+  const start = communityPoint((695 + 750) / 2, (543 + 577) / 2);
+  const end = COMMUNITY_ATLAS.nodes.find(node => node.id === "rancho-n");
+  for (const mode of ["car", "bike"]) {
+    const route = findRoute(COMMUNITY_ATLAS, start, end, mode);
+    assert.ok(route.accessKm > .02, "the pedestrian leg is counted rather than a larger snap");
+    assert.ok(route.accessPaths[0].length >= 2);
+    assert.deepEqual(route.accessPaths[0][0], start);
+    const bridge = COMMUNITY_ATLAS.nodes.find(node => node.id === "south-bridge");
+    assert.ok(route.roadPoints.some(point => point.x === bridge.x && point.y === bridge.y));
+    assert.ok(route.minutes > (route.distanceKm - route.accessKm) / 35 * 60);
+  }
+});
+
 test("every map preset has connected roads; legacy starter anchors do not imply approved access", () => {
   for (const { image } of MAP_PRESETS) {
     const atlas = presetAtlas(image);

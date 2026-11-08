@@ -102,6 +102,9 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
   und anschließend einen Zielmarker anklicken oder das Ziel im Menü auswählen.
   Die Route wird direkt auf der simulierten Kartenszene dargestellt, ohne
   zusätzliches Journal- oder Modulfenster.
+  **Bike** bezeichnet ein Motorrad. Auto und Bike nutzen Fahrstraßen; liegt
+  der Start auf einem Parkweg, wird ein gelber Fußweg bis zur Fahrstraße
+  eingeplant. Bewegte Linienimpulse und ein Zielpfeil zeigen die Reiserichtung.
 - Bodenrouten benötigen erfasste Straßen und angebundene Orte. Beispielorte
   sind keine geprüften Straßeneingänge: bei Bedarf im Dossiereditor **Zugang
   auf Karte zeichnen**, begehbare Wegpunkte setzen und mit einem roten

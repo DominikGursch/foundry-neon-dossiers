@@ -27,7 +27,7 @@ const districts = [
   district("downtown", "Downtown", "low", ["Eastern Tigers Triad", "Skiv Family", "Undertow"],
     "A restored urban enclave on the western edge of the island.", [[320,800],[410,800],[410,872],[317,872],[290,843]]),
   district("hot-zone", "The Hot Zone", "extreme", ["Lightning Cats", "Maelstrom", "Reckoners"],
-    "The scar at the heart of Night City. Plan access and hazards with the GM.", [[520,778],[603,780],[632,831],[682,857],[642,897],[590,918],[532,904],[500,873],[500,822]]),
+    "The scar at the heart of Night City. Approach with caution.", [[520,778],[603,780],[632,831],[682,857],[642,897],[590,918],[532,904],[500,873],[500,822]]),
   district("little-china", "Little China", "high", ["Gold Dragons", "Red Chrome Legion", "Weng Fang Tong"],
     "A community rebuilding between city development and the combat zones.", [[683,840],[738,862],[704,918],[662,936],[638,906]]),
   district("university", "University District", "moderate", ["Philharmonic Vampyres", "Princesses of Justice"],
@@ -117,13 +117,13 @@ export const CITY_EXAMPLES = [
   location("McCartney Field Stadium", "upper-marina", "community", 925, 148, "stadium",
     "A major venue for Night City's sports and concerts. Atlas reference: B9, p. 6."),
   location("City Medical Center", "upper-marina", "community", 1235, 370, "medical",
-    "A medical institution in Upper Marina. Ask the GM about access, contacts and services in this campaign. Atlas reference: B3, p. 3."),
+    "A medical institution in Upper Marina. Atlas reference: B3, p. 3."),
   location("Club Atlantis", "the-glen", "commerce", 890, 740, "glen-n",
     "A multi-level club in The Glen, known for its striking atmosphere. Atlas reference: G6, p. 8."),
   location("Totentanz", "hot-zone", "mystery", 820, 240, "marina-nw",
-    "A chrome-metal club associated with Maelstrom. Off-road access and local hazards require GM judgment. Atlas reference: D4, p. 6."),
+    "A chrome-metal club associated with Maelstrom. Watch your back. Atlas reference: D4, p. 6."),
   location("Forlorn Hope", "little-china", "commerce", 1378, 657, "china-s",
-    "The earlier Little China home of the edgerunner bar, before Tales of the RED: Hope Reborn. Adjust its status to your campaign timeline. Atlas reference: E3, p. 7."),
+    "An edgerunner bar in Little China. Atlas reference: E3, p. 7."),
   location("Crisis Medical Center", "old-japantown", "community", 1047, 613, "japantown-w",
     "A medical facility in Old Japantown. A possible contact for crews operating in the combat zones. Atlas reference: H1, p. 8."),
   location("Dock 13", "port", "commerce", 220, 1105, "port-access",
@@ -138,7 +138,7 @@ const communityDistrict = (id, outline) => ({
   ...districts.find(district => district.id === id),
   ...(id === "hot-zone" ? {
     name: "City Center",
-    description: "This marker-free map variant depicts an intact City Center instead of the Hot Zone. Adapt its status to your campaign timeline."
+    description: "Corporate towers and busy streets at the heart of Night City."
   } : {}),
   polygon: outline.map(([x, y]) => cp(x, y))
 });

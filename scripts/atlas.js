@@ -1,6 +1,6 @@
 import { DEFAULT_MAP, imagePath, noteText } from "./model.js";
 
-export const MODES = { walk: 5, bike: 15, car: 35, av: 100 };
+export const MODES = { walk: 5, bike: 35, car: 35, av: 100 };
 export const THREATS = ["low", "moderate", "high", "extreme"];
 export const ROAD_SNAP_KM = 0.02;
 const identifier = value => typeof value === "string" && /^[a-zA-Z0-9_-]{1,64}$/.test(value);
@@ -21,6 +21,7 @@ function title(value) {
 
 export function atlasData(input) {
   if (!input || typeof input !== "object") throw new Error("Invalid atlas");
+  if (input.transportVersion !== undefined && ![1, 2].includes(input.transportVersion)) throw new Error("Invalid transport version");
   const image = imagePath(input.image, false);
   const { width, height, kmAcross } = input;
   if (![width, height].every(value => Number.isInteger(value) && value >= 100 && value <= 20000) ||
@@ -43,11 +44,14 @@ export function atlasData(input) {
     if (!Array.isArray(edge.modes) || !edge.modes.length ||
         edge.modes.some(mode => !["walk", "bike", "car"].includes(mode))) throw new Error("Invalid road modes");
     if (edge.oneWay !== undefined && typeof edge.oneWay !== "boolean") throw new Error("Invalid road direction");
+    // Older bike permissions describe bicycles, not motor vehicles.
+    const modes = input.transportVersion === 2 ? edge.modes
+      : [...edge.modes.filter(mode => mode !== "bike"), ...(edge.modes.includes("car") ? ["bike"] : [])];
     return {
-      from: edge.from, to: edge.to, modes: [...new Set(edge.modes)],
+      from: edge.from, to: edge.to, modes: [...new Set(modes)],
       ...(edge.oneWay ? { oneWay: true } : {})
     };
-  });
+  }).filter(edge => edge.modes.length);
   const districtIds = new Set();
   const districts = input.districts.map(district => {
     if (!identifier(district.id) || districtIds.has(district.id)) throw new Error("District IDs must be unique");
@@ -63,11 +67,11 @@ export function atlasData(input) {
       polygon: district.polygon.map(point)
     };
   });
-  return { image, width, height, kmAcross, nodes, edges, districts };
+  return { image, width, height, kmAcross, nodes, edges, districts, transportVersion: 2 };
 }
 
 export function emptyAtlas(image) {
-  return { image, width: 1000, height: 800, kmAcross: 10, nodes: [], edges: [], districts: [] };
+  return { image, width: 1000, height: 800, kmAcross: 10, nodes: [], edges: [], districts: [], transportVersion: 2 };
 }
 
 const nodes = [];
@@ -148,6 +152,93 @@ export function roadAccess(atlas, target, mode) {
   return { projection, points: [] };
 }
 
+function vehicleRouteWithWalking(atlas, start, end, mode) {
+  const endpoints = [start, end].map(target => {
+    try { return { ...roadAccess(atlas, target, mode), vehicle: true }; }
+    catch (error) {
+      if (!["invalidAccess", "unconnectedPlace"].includes(error.message)) throw error;
+      return { ...roadAccess(atlas, target, "walk"), vehicle: false };
+    }
+  });
+  const nodes = new Map(atlas.nodes.map(node => [node.id, node]));
+  const splits = new Map();
+  const ends = endpoints.map((entry, index) => {
+    if (entry.node) return entry.node.id;
+    const projection = entry.projection, edge = atlas.edges[projection.index];
+    if (projection.fraction < 1e-10) return edge.from;
+    if (projection.fraction > 1 - 1e-10) return edge.to;
+    const id = index ? "@destination" : "@origin";
+    nodes.set(id, { id, x: projection.x, y: projection.y });
+    // Split every parallel edge at the same physical point, without joining crossings.
+    for (const [edgeIndex, candidate] of atlas.edges.entries()) {
+      if (!((candidate.from === edge.from && candidate.to === edge.to) ||
+          (candidate.from === edge.to && candidate.to === edge.from))) continue;
+      if (!splits.has(edgeIndex)) splits.set(edgeIndex, []);
+      splits.get(edgeIndex).push({ id, fraction: candidate.from === edge.from ? projection.fraction : 1 - projection.fraction });
+    }
+    return id;
+  });
+  const graph = new Map([...nodes.keys()].flatMap(id => [0, 1, 2, 3].map(phase => [`${phase}:${id}`, []])));
+  const link = (from, to, travelMode) => {
+    const a = nodes.get(from.slice(2)), b = nodes.get(to.slice(2));
+    graph.get(from).push({ to, travelMode, cost: distance(atlas, a, b) / MODES[travelMode] });
+  };
+  for (const [index, edge] of atlas.edges.entries()) {
+    const ids = [edge.from, ...(splits.get(index) ?? []).sort((a, b) => a.fraction - b.fraction).map(split => split.id), edge.to];
+    for (let i = 1; i < ids.length; i++) {
+      const pairs = [[ids[i - 1], ids[i]], ...(!edge.oneWay ? [[ids[i], ids[i - 1]]] : [])];
+      for (const [a, b] of pairs) {
+        if (edge.modes.includes("walk")) for (const phase of [0, 3]) link(`${phase}:${a}`, `${phase}:${b}`, "walk");
+        if (edge.modes.includes(mode) && distance(atlas, nodes.get(a), nodes.get(b)) > 1e-10) {
+          link(`1:${a}`, `2:${b}`, mode);
+          link(`2:${a}`, `2:${b}`, mode);
+        }
+      }
+    }
+    if (edge.modes.includes(mode)) for (const id of ids) {
+      link(`0:${id}`, `1:${id}`, "walk");
+      link(`2:${id}`, `3:${id}`, "walk");
+    }
+  }
+  const from = `${endpoints[0].vehicle ? 1 : 0}:${ends[0]}`;
+  const to = `${endpoints[1].vehicle ? 2 : 3}:${ends[1]}`;
+  const costs = new Map([[from, 0]]), previous = new Map(), remaining = new Set(graph.keys());
+  while (remaining.size) {
+    let current;
+    for (const id of remaining) if (costs.has(id) && (current === undefined || costs.get(id) < costs.get(current))) current = id;
+    if (current === undefined || current === to) break;
+    remaining.delete(current);
+    for (const step of graph.get(current)) {
+      const cost = costs.get(current) + step.cost;
+      if (cost >= (costs.get(step.to) ?? Infinity)) continue;
+      costs.set(step.to, cost);
+      previous.set(step.to, { from: current, travelMode: step.travelMode });
+    }
+  }
+  if (!costs.has(to)) throw new Error("noRoute");
+  const steps = [];
+  for (let id = to; id !== from;) {
+    const step = previous.get(id);
+    steps.unshift({ from: nodes.get(step.from.slice(2)), to: nodes.get(id.slice(2)), mode: step.travelMode });
+    id = step.from;
+  }
+  const roadPoints = [], accessPaths = [endpoints[0].points.map(point), []];
+  let riding = false;
+  for (const step of steps) {
+    if (distance(atlas, step.from, step.to) < 1e-10) continue;
+    const path = step.mode === mode ? roadPoints : accessPaths[riding ? 1 : 0];
+    if (step.mode === mode) riding = true;
+    if (!path.length) path.push(point(step.from));
+    path.push(point(step.to));
+  }
+  accessPaths[1].push(...[...endpoints[1].points].reverse().map(point));
+  const pathLength = path => path.slice(1).reduce((sum, p, index) => sum + distance(atlas, path[index], p), 0);
+  const accessKm = accessPaths.reduce((sum, path) => sum + pathLength(path), 0);
+  const distanceKm = pathLength(roadPoints) + accessKm;
+  return { points: [...accessPaths[0], ...roadPoints, ...accessPaths[1]], roadPoints, accessPaths, accessKm, distanceKm,
+    minutes: pathLength(roadPoints) / MODES[mode] * 60 + accessKm / MODES.walk * 60, mode };
+}
+
 export function findRoute(atlas, start, end, mode) {
   point(start);
   point(end);
@@ -164,7 +255,14 @@ export function findRoute(atlas, start, end, mode) {
   };
   if (mode === "av" || (start.x === end.x && start.y === end.y)) return finish([]);
   if (!atlas.edges.some(edge => edge.modes.includes(mode))) throw new Error("noRoads");
-  const access = [roadAccess(atlas, start, mode), roadAccess(atlas, end, mode)];
+  let access;
+  try { access = [roadAccess(atlas, start, mode), roadAccess(atlas, end, mode)]; }
+  catch (error) {
+    if (["car", "bike"].includes(mode) && ["invalidAccess", "unconnectedPlace"].includes(error.message)) {
+      return vehicleRouteWithWalking(atlas, start, end, mode);
+    }
+    throw error;
+  }
   const byId = new Map(atlas.nodes.map(node => [node.id, node]));
   const splits = new Map();
   const endpoints = access.map((entry, index) => {

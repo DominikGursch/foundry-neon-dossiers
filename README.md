@@ -178,7 +178,11 @@ Activate it through Foundry's scene navigation to bring players there.
 The HUD mounts on scene load and follows Foundry's pan/zoom transform.
 Click a numbered place once for its dossier card. **Route / Places** selects
 start, destination and travel mode; the personal route appears directly on
-the map. Walking is cyan, cycling green, driving blue, AV dashed violet.
+the map. Walking is cyan, Bike green, driving blue, AV dashed violet.
+Directional pulses and a destination arrow show travel from the chosen start
+to the destination. Reduced-motion preferences disable the pulses. Normal
+dossiers use Agent-style status text; technical guidance stays in GM editors
+and this documentation.
 GM-traced walking access is dashed amber. Foundry's usual canvas pan/zoom
 controls remain available; the HUD also supplies zoom/center buttons.
 Leaving the scene removes the HUD, pointer handlers and personal route.
@@ -226,7 +230,7 @@ previous access path is removed when saved and may need to be traced again.
 image-positioned junctions/bends and 995 segments. It expands Watson, the
 island street grid and City Center rings, the Glen, Westbrook, mainland
 Heywood, Rancho Coronado and Pacifica. The northern/southern bridges are
-explicit; Lake Park links are restricted to walking/cycling. Coordinates
+explicit; Lake Park links are restricted to walking. Coordinates
 were inspected against image crops and street overlays; at-grade junction
 decisions are explicit, not inferred from every geometric crossing.
 This is **still not every visible alley or road**, and is not an automated
@@ -275,6 +279,21 @@ legs, not automatic obstacle detection. Moving the POI clears its traced
 access. A bare legacy `roadNode` is only usable within the same 20 m tolerance;
 more distant assignments now report missing access rather than invent a path.
 Existing off-road starter anchors need the same review.
+Auto/Bike endpoints on mapped pedestrian paths can now walk along that graph
+to a vehicle street, then travel by vehicle and walk the final approach.
+Amber legs are actual mapped paths (or explicitly traced access), included
+in distance/time at 5 km/h. This does not extend the 20 m snap distance, invent
+water crossings or allow vehicles onto pedestrian paths. Such mixed trips
+minimize estimated travel time while respecting each leg's direction rules.
+
+**Bike means motorcycle**, not bicycle: urban estimates use 35 km/h for
+both motorcycles and cars. Legacy configurations without `transportVersion: 2`
+derive motorcycle permissions from car permissions, retaining one-way rules
+and removing the old bicycle permissions. A formerly bicycle-only segment
+with no other permitted mode is removed; paths that also allow walking remain
+walkable. The marker prevents later
+GM-authored motorcycle restrictions from being overwritten. Saved map
+coordinates, districts, scale and dossiers are preserved.
 
 Edges are **bidirectional by default**, straight street segments between nodes; place
 additional nodes at bends and actual junctions. Connect bridges explicitly and
@@ -286,8 +305,8 @@ pedestrians may travel both ways. Roads can be drawn and inspected on the map. T
 no automatic runtime map-image road extractor.
 
 Routing uses Dijkstra's shortest-distance path over mode-compatible edges,
-accounting for image aspect ratio and scale. The estimate uses 5/15/35 km/h for
-walking/bike/car. Amber dashed **GM-traced access legs** are included in
+accounting for image aspect ratio and scale. The estimate uses 5/35/35 km/h for
+walking/motorcycle/car. Amber dashed **walking access legs** are included in
 distance and walked at 5 km/h even for car/bike.
 Unconnected places and disconnected/unconfigured roads produce a visible error, **never a
 straight-line driving fallback**. AV is explicitly a 100 km/h straight-line

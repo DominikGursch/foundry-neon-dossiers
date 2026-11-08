@@ -347,6 +347,7 @@ export class DossierBoard extends Application {
       overlay.append(svg("circle", { cx: this.origin.x * atlas.width, cy: this.origin.y * atlas.height, r: 10, class: "nd-origin" }));
     }
     this.routeSummary = "";
+    this.routeAccessSummary = "";
     this.routeError = "";
     if (this.origin && selected && !this.editing && !this.roadDraft && !this.configuring && !this.reviewing && !this.networkDraft) {
       this.drawRoute(routeControls, overlay, atlas, selected);
@@ -393,7 +394,9 @@ export class DossierBoard extends Application {
         element("h2", { text: t("welcomeTitle") }), element("p", { text: t("choosePlace") }),
         element("p", { class: "nd-muted", text: t("mapHelp") }));
     }
-    if (city) panel.append(element("p", { class: "nd-data-note", text: t("campaignDefaults") }));
+    if (city && game.user.isGM && (this.networkDraft || this.configuring || this.editing)) {
+      panel.append(element("p", { class: "nd-data-note", text: t("campaignDefaults") }));
+    }
     if (this.editing && game.user.isGM) this.drawAccess(overlay, roadMarkers, atlas);
     if (this.sceneMode) {
       this.updateSceneTransform();
@@ -998,7 +1001,7 @@ export class DossierBoard extends Application {
   drawRoute(panel, overlay, atlas, destination) {
     try {
       const route = findRoute(atlas, this.origin, destination, this.mode);
-      this.routeSummary = `${destination.title}: ${route.distanceKm.toFixed(2)} km · ${Math.ceil(route.minutes)} min`;
+      this.routeSummary = `${this.origin.title ?? t("mapStart")} → ${destination.title} · ${route.distanceKm.toFixed(2)} km · ${t("eta")} ${Math.ceil(route.minutes)} min`;
       const polyline = (points, className) => overlay.append(svg("polyline", {
         points: points.map(p => `${p.x * atlas.width},${p.y * atlas.height}`).join(" "), class: className
       }));
@@ -1008,8 +1011,23 @@ export class DossierBoard extends Application {
         polyline(route.roadPoints, "nd-route-line");
         for (const path of route.accessPaths) if (path.length) polyline(path, "nd-route-line nd-route-access");
       }
+      const arrowId = `nd-route-arrow-${foundry.utils.randomID()}`;
+      const arrow = svg("marker", { id: arrowId, viewBox: "0 0 10 10", refX: 9, refY: 5,
+        markerWidth: 4, markerHeight: 4, orient: "auto", markerUnits: "strokeWidth" });
+      arrow.append(svg("path", { d: "M 0 0 L 10 5 L 0 10 Z", fill: "#fff" }));
+      const definitions = svg("defs");
+      definitions.append(arrow);
+      overlay.append(definitions);
+      overlay.append(svg("polyline", {
+        points: route.points.map(p => `${p.x * atlas.width},${p.y * atlas.height}`).join(" "),
+        class: "nd-route-line nd-route-flow", "marker-end": `url(#${arrowId})`
+      }));
       panel.append(element("strong", { class: "nd-route-summary", text: this.routeSummary }),
         element("p", { class: "nd-muted", text: t(this.mode === "av" ? "flightEstimate" : "routeEstimate") }));
+      if (["car", "bike"].includes(this.mode) && route.accessKm > 0) {
+        this.routeAccessSummary = `${t("walkingTransfer")}: ${Math.round(route.accessKm * 1000)} m`;
+        panel.append(element("p", { class: "nd-muted", text: this.routeAccessSummary }));
+      }
     } catch (error) {
       if (!["noRoads", "noRoute", "invalidAccess", "unconnectedPlace"].includes(error.message)) throw error;
       this.routeError = t(error.message);
@@ -1137,6 +1155,7 @@ export class DossierBoard extends Application {
     panel.append(element("p", { class: "nd-description", text: place.description }));
     if (this.routeSummary) panel.append(element("p", { class: "nd-route-summary", text: this.routeSummary }),
       element("p", { class: "nd-muted", text: t(this.mode === "av" ? "flightEstimate" : "routeEstimate") }));
+    if (this.routeAccessSummary) panel.append(element("p", { class: "nd-muted", text: this.routeAccessSummary }));
     if (this.routeError) panel.append(element("p", { class: "nd-route-error", role: "status", text: this.routeError }));
     const district = currentAtlas().districts.find(district => district.id === place.district);
     if (district) panel.append(button(`${t("district")}: ${district.name}`, () => {

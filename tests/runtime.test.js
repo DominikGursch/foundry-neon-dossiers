@@ -265,7 +265,10 @@ test("districts and route origins respect visibility and drop revoked cached loc
   board.draw();
   assert.ok(board.root.find(node => node.className === "nd-route-summary"));
   const panel = board.root.find(node => node.className === "nd-panel");
-  assert.ok(contains(panel, en.routeEstimate), "access disclaimers remain visible when the navigation drawer is closed");
+  assert.ok(contains(panel, en.routeEstimate), "route status remains visible when the navigation drawer is closed");
+  assert.ok(!contains(panel, en.campaignDefaults), "normal player dossiers do not display campaign/editor guidance");
+  assert.ok(board.root.find(node => node.attributes.class === "nd-route-line nd-route-flow"), "flow follows the ordered route");
+  assert.ok(board.routeSummary.includes("→"), "the summary identifies start and destination");
   settings.set("atlases", { [DEFAULT_MAP]: { ...presetAtlas(DEFAULT_MAP), nodes: [], edges: [] } });
   board.draw();
   assert.ok(contains(board.root.find(node => node.className === "nd-panel"), en.noRoads),

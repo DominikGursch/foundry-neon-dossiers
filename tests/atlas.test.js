@@ -123,3 +123,48 @@ test("coincident endpoints produce zero distance and no phantom minimum travel t
   assert.equal(findRoute(atlas, offStreet, offStreet, "car").minutes, 0);
   assert.equal(findRoute(emptyAtlas(DEFAULT_MAP), offStreet, offStreet, "walk").distanceKm, 0);
 });
+
+test("vehicle trips use mapped walking access at both ends, never drive on pedestrian links", () => {
+  const atlas = atlasData({ ...emptyAtlas(DEFAULT_MAP), kmAcross: 1,
+    nodes: [{ id: "a", x: .1, y: .5 }, { id: "b", x: .3, y: .5 },
+      { id: "c", x: .7, y: .5 }, { id: "d", x: .9, y: .5 }],
+    edges: [{ from: "a", to: "b", modes: ["walk"] },
+      { from: "b", to: "c", modes: ["walk", "car", "bike"], oneWay: true },
+      { from: "c", to: "d", modes: ["walk"] }] });
+  for (const mode of ["car", "bike"]) {
+    const route = findRoute(atlas, { x: .2, y: .5 }, { x: .8, y: .5 }, mode);
+    assert.ok(Math.abs(route.accessKm - .2) < 1e-10);
+    assert.deepEqual(route.roadPoints, [{ x: .3, y: .5 }, { x: .7, y: .5 }]);
+    assert.ok(Math.abs(route.minutes - (.2 / 5 + .4 / 35) * 60) < 1e-10);
+    assert.throws(() => findRoute(atlas, { x: .8, y: .5 }, { x: .2, y: .5 }, mode), /noRoute/);
+    assert.throws(() => findRoute(atlas, { x: .2, y: .7 }, { x: .8, y: .5 }, mode), /unconnectedPlace/);
+  }
+  const disconnected = { ...atlas, edges: atlas.edges.slice(1) };
+  assert.throws(() => findRoute(disconnected, atlas.nodes[0], atlas.nodes[3], "car"), /unconnectedPlace/);
+  const noDriving = { ...atlas,
+    nodes: [{ id: "p", x: .1, y: .5 }, { id: "a", x: .3, y: .5 },
+      { id: "b", x: .3, y: .5 }, { id: "q", x: .9, y: .5 }],
+    edges: [{ from: "p", to: "a", modes: ["walk"] }, { from: "a", to: "b", modes: ["car"] },
+      { from: "b", to: "q", modes: ["walk"] }] };
+  assert.throws(() => findRoute(noDriving, noDriving.nodes[0], noDriving.nodes[3], "car"), /noRoute/,
+    "a zero-length vehicle edge must not turn an all-walking trip into a car route");
+});
+
+test("legacy bicycle permissions migrate to vehicle permissions without changing newer Bike edits", () => {
+  const legacy = { ...map(), transportVersion: undefined,
+    edges: [{ from: "a", to: "b", modes: ["walk", "bike"] },
+      { from: "b", to: "c", modes: ["walk", "car"], oneWay: true },
+      { from: "c", to: "d", modes: ["bike"] }] };
+  const migrated = atlasData(legacy);
+  assert.deepEqual(atlasData({ ...legacy, transportVersion: 1 }), migrated);
+  assert.throws(() => atlasData({ ...legacy, transportVersion: 3 }), /Invalid transport version/);
+  assert.deepEqual(migrated.edges[0].modes, ["walk"]);
+  assert.deepEqual(migrated.edges[1].modes, ["walk", "car", "bike"]);
+  assert.equal(migrated.edges[1].oneWay, true);
+  assert.equal(migrated.edges.length, 2);
+  const edited = { ...migrated, edges: [{ from: "a", to: "b", modes: ["car"] }] };
+  assert.deepEqual(atlasData(edited).edges[0].modes, ["car"], "a GM can forbid motorcycles separately");
+  const motorcycleOnly = { ...migrated, edges: [{ from: "a", to: "b", modes: ["bike"] }] };
+  assert.deepEqual(atlasData(motorcycleOnly).edges[0].modes, ["bike"], "new motorcycle-only roads stay permitted");
+  assert.deepEqual(atlasData(migrated), migrated);
+});

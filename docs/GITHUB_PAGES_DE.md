@@ -87,6 +87,9 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
   und keine schwarzen Seitenstreifen. Sie startet ohne interaktive POIs;
   mit **SL-WERKZEUGE > Ort hinzufügen** legt die Spielleitung eigene Orte an.
 - Einen nummerierten Marker anklicken: Rechts öffnet sich sein Dossier.
+  Die Marker sind kompakte rechteckige Terminal-Tags. Ein dezenter
+  Monitorrahmen mit statischem Rauschen und Scanlines liegt über der Karte;
+  Bedienelemente bleiben frei und die Kartenbilder selbst unverändert.
 - Mit **Dossier bearbeiten** lässt sich der Marker auf der Karte ziehen
   oder mit den Pfeiltasten verschieben. Erst **Dossier speichern** übernimmt
   die neue Position. Ein vorhandener Straßenzugang muss nach dem Verschieben

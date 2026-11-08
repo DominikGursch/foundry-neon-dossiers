@@ -27,6 +27,10 @@ storage and permission layer; illustrations remain local files.
 The independently authored red/black terminal layout has a
 compact header, color-coded category strip, large draggable map, numbered
 markers, collapsible navigation and floating right-hand dossier cards.
+Compact rectangular dossier tags and a subtle monitor frame, static grain
+and scanlines reinforce the RED terminal look. The effects do not intercept
+input, animate, distort map coordinates or cover the dossier/editor cards.
+High-contrast display preferences disable the monitor overlays.
 
 **Included maps:** Night City Atlas with district names, Atlas with streets
 only, and Ced23Ric's community Night City 2045 map. The original Harbor Grid

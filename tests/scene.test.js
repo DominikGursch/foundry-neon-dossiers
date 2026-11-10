@@ -12,6 +12,7 @@ test("scene lifecycle publishes only globally shared places and preserves unrela
     testUserPermission: user => user.isGM || ownership.default >= 2
   });
   const shared = makeEntry("shared", { default: 2 });
+  shared.getFlag = () => ({ ...EXAMPLES[0], category: "gm-defined-category" });
   const hidden = makeEntry("hidden", { default: 0 });
   const individual = makeEntry("individual", { default: 0, player: 2 });
   const limited = makeEntry("limited", { default: 1 });

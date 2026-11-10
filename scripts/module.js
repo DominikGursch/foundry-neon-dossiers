@@ -1,4 +1,4 @@
-import { ID, COMMUNITY_MAP, CATEGORIES, imagePath, placeData, noteText, readablePlaces, filterPlaces, placesOnMap, mapFamily } from "./model.js";
+import { ID, COMMUNITY_MAP, DEFAULT_CATEGORIES, categoriesData, imagePath, placeData, noteText, readablePlaces, filterPlaces, placesOnMap, mapFamily } from "./model.js";
 import { MODES, atlasData, findRoute, roadAccess } from "./atlas.js";
 import { MAP_PRESETS, starterPlaces, ATLAS_SOURCE, presetAtlas } from "./city.js";
 import { currentAtlas, synchronizeScene, migrateCommunityMap } from "./scene.js";
@@ -37,6 +37,27 @@ function report(error) {
 
 function requireGM() {
   if (!game.user.isGM) throw new Error(t("gmOnly"));
+}
+
+function currentCategories() {
+  return categoriesData(game.settings.get(ID, "categories") ?? DEFAULT_CATEGORIES);
+}
+
+function categoryInfo(id, definitions = currentCategories()) {
+  return definitions.find(category => category.id === id) ?? { id, name: id, color: "#a7a7b5" };
+}
+
+function categoryLabel(category) {
+  return category.name || t(category.id);
+}
+
+function colorCategory(node, id, definitions = currentCategories()) {
+  node.style.setProperty("--nd-category", categoryInfo(id, definitions).color);
+  return node;
+}
+
+function categoryUsage(id) {
+  return game.journal.contents.filter(entry => entry.getFlag(ID, "place")?.category === id).length;
 }
 
 function svg(tag, attributes = {}) {
@@ -78,6 +99,7 @@ async function saveNote(placeId, value) {
 
 async function createPlace(data) {
   requireGM();
+  if (!currentCategories().some(category => category.id === data.category)) throw new Error(t("invalidCategory"));
   const place = placeData({ ...data, mapImage: data.mapImage ?? currentAtlas().image });
   return JournalEntry.create({
     name: place.title,
@@ -106,6 +128,7 @@ export class DossierBoard extends Application {
     this.mode = "walk";
     this.pickingOrigin = false;
     this.configuring = false;
+    this.categoryDraft = null;
     this.roadDraft = null;
     this.tracingAccess = false;
     this.reviewing = false;
@@ -149,13 +172,22 @@ export class DossierBoard extends Application {
     this.renderedZoom = this.zoom;
     const places = allPlaces();
     let atlas;
+    let categoryDefinitions;
     try { atlas = currentAtlas(); }
     catch (error) {
       this.root.replaceChildren(element("p", { role: "alert", text: t("invalidAtlas") }));
       report(error);
       return;
     }
+    try { categoryDefinitions = currentCategories(); }
+    catch (error) {
+      this.root.replaceChildren(element("p", { role: "alert", text: t("invalidCategories") }));
+      report(error);
+      return;
+    }
     if (!atlas.districts.some(district => district.id === this.district)) this.district = "";
+    if (this.category && !categoryDefinitions.some(category => category.id === this.category)) this.category = "";
+    const navigationLocked = Boolean(this.networkDraft || this.configuring || this.categoryDraft);
     if (this.origin?.id && !places.some(place => place.id === this.origin.id)) this.origin = null;
     else if (this.origin?.id) this.origin = places.find(place => place.id === this.origin.id);
     const selected = places.find(place => place.id === this.selected);
@@ -164,12 +196,14 @@ export class DossierBoard extends Application {
     this.root.replaceChildren();
     const search = element("input", { type: "search", placeholder: t("search"), "aria-label": t("search"), value: this.query });
     const categories = element("nav", { class: "nd-categories", "aria-label": t("category") });
-    for (const key of ["", ...CATEGORIES]) {
-      const tab = button(`${t(key || "allCategories")} · ${places.filter(place => !key || place.category === key).length}`, () => {
+    for (const category of [{ id: "", name: t("allCategories"), color: "#ff6b76" }, ...categoryDefinitions]) {
+      const key = category.id;
+      const tab = button(`${categoryLabel(category)} · ${places.filter(place => !key || place.category === key).length}`, () => {
         this.category = key;
         this.draw();
       });
       tab.className = `nd-category-tab nd-cat-${key || "all"}`;
+      tab.style.setProperty("--nd-category", category.color);
       tab.setAttribute("aria-pressed", String(this.category === key));
       categories.append(tab);
     }
@@ -205,16 +239,18 @@ export class DossierBoard extends Application {
       if (!results.length) list.append(element("p", { text: t("noPlaces") }));
       for (const place of results) {
         const select = () => {
-          if (this.editing || this.roadDraft || this.networkDraft) return;
+          if (this.editing || this.roadDraft || this.networkDraft || this.categoryDraft) return;
           this.configuring = false; this.reviewing = false; this.sidebarOpen = false; this.selected = place.id; this.draw();
         };
         const index = String(places.indexOf(place) + 1).padStart(2, "0");
         const row = button(place.title, select);
         row.className = `nd-place-row nd-cat-${place.category}${place.id === this.selected ? " nd-selected" : ""}`;
+        colorCategory(row, place.category, categoryDefinitions);
         row.setAttribute("data-index", index);
         list.append(row);
         const marker = button(index, select);
         marker.className = `nd-marker nd-cat-${place.category}${place.id === this.selected ? " nd-selected" : ""}`;
+        colorCategory(marker, place.category, categoryDefinitions);
         marker.setAttribute("aria-label", place.title);
         marker.setAttribute("title", place.title);
         marker.setAttribute("data-label", place.title);
@@ -230,7 +266,7 @@ export class DossierBoard extends Application {
     districts.append(element("option", { value: "", text: t("allDistricts") }));
     for (const district of atlas.districts) districts.append(element("option", { value: district.id, text: district.name }));
     districts.value = this.district;
-    districts.disabled = Boolean(this.networkDraft || this.configuring);
+    districts.disabled = navigationLocked;
     districts.addEventListener("change", () => {
       this.district = districts.value;
       this.selected = null;
@@ -243,7 +279,7 @@ export class DossierBoard extends Application {
       this.draw();
     });
     const toggle = button(t("navigationPlaces"), () => { this.sidebarOpen = !this.sidebarOpen; this.draw(); });
-    toggle.disabled = Boolean(this.networkDraft || this.configuring);
+    toggle.disabled = navigationLocked;
     toggle.setAttribute("aria-expanded", String(this.sidebarOpen));
     const tools = element("div", { class: "nd-tools" }, search, districts, toggle);
     if (game.user.isGM) {
@@ -253,26 +289,46 @@ export class DossierBoard extends Application {
       const gmActions = element("div", { class: "nd-gm-actions" });
       gmTools.append(gmActions);
       tools.append(gmTools);
-      gmActions.append(button(t("addPlace"), () => {
+      const gmAction = (label, action) => button(label, () => {
+        requireGM();
+        gmTools.open = false;
+        this.gmToolsOpen = false;
+        return action();
+      });
+      gmActions.append(gmAction(t("addPlace"), () => {
         this.configuring = false;
         this.reviewing = false;
         this.roadDraft = null;
         this.tracingAccess = false;
-        this.editing = { title: "", category: "community", description: "", image: "", x: 0.5, y: 0.5 };
+        this.editing = { title: "", category: categoryDefinitions[0].id, description: "", image: "", x: 0.5, y: 0.5 };
         this.draw();
-      }), button(t("examples"), async () => {
+      }), gmAction(t("examples"), async () => {
         const examples = starterPlaces(atlas.image);
         if (!examples.length) throw new Error(t("noStarterData"));
         if (!await Dialog.confirm({ title: t("examples"), content: `<p>${t("confirmExamples")}</p>` })) return;
+        const definitions = currentCategories();
+        let reassigned = false;
         for (const [index, example] of examples.entries()) {
           const key = `${atlas.image}:${index}`;
           const exists = game.journal.contents.some(entry => entry.getFlag(ID, "example") === key);
           if (exists) continue;
-          const entry = await createPlace(example);
+          const category = definitions.some(category => category.id === example.category) ? example.category : definitions[0].id;
+          if (category !== example.category) reassigned = true;
+          const entry = await createPlace({ ...example, category });
           await entry.setFlag(ID, "example", key);
         }
         ui.notifications.info(t("examplesReady"));
-      }), button(t("configureAtlas"), () => {
+        if (reassigned) ui.notifications.info(t("exampleCategoriesReassigned"));
+      }), gmAction(t("manageCategories"), () => {
+        this.editing = null;
+        this.reviewing = false;
+        this.roadDraft = null;
+        this.pickingOrigin = false;
+        this.sidebarOpen = false;
+        this.categoryDraft = currentCategories();
+        this.categoryOriginal = JSON.stringify(this.categoryDraft);
+        this.draw();
+      }), gmAction(t("configureAtlas"), () => {
         this.editing = null;
         this.reviewing = false;
         this.roadDraft = null;
@@ -283,7 +339,7 @@ export class DossierBoard extends Application {
         this.configuring = true;
         this.sidebarOpen = false;
         this.draw();
-      }), button(t("editNetwork"), () => {
+      }), gmAction(t("editNetwork"), () => {
         this.editing = null;
         this.configuring = false;
         this.reviewing = false;
@@ -295,18 +351,19 @@ export class DossierBoard extends Application {
         this.pickingOrigin = false;
         this.sidebarOpen = false;
         this.draw();
-      }), button(t("scene"), async () => {
+      }), gmAction(t("scene"), async () => {
         requireGM();
         const scene = await synchronizeScene(true);
         await scene.view();
         ui.notifications.info(t("sceneReady"));
       }));
-      if (this.networkDraft || this.configuring) for (const action of gmActions.children) action.disabled = true;
+      if (navigationLocked) for (const action of gmActions.children) action.disabled = true;
     }
     const panel = element("section", { class: "nd-panel", "aria-label": t("dossier") });
     const closePanel = button(t("closePanel"), () => {
       if (this.networkDraft) return this.cancelNetwork();
       if (this.configuring) this.atlasDraft = null;
+      this.categoryDraft = null;
       this.selected = null; this.district = ""; this.editing = null; this.configuring = false;
       this.reviewing = false;
       this.roadDraft = null; this.tracingAccess = false;
@@ -319,18 +376,18 @@ export class DossierBoard extends Application {
     origin.append(element("option", { value: "", text: this.origin && !this.origin.id ? t("mapStart") : t("chooseStart") }));
     for (const place of places) origin.append(element("option", { value: place.id, text: place.title }));
     origin.value = this.origin?.id ?? "";
-    origin.disabled = Boolean(this.networkDraft || this.configuring);
+    origin.disabled = navigationLocked;
     origin.addEventListener("change", () => { this.origin = places.find(place => place.id === origin.value) ?? null; this.draw(); });
     const mode = element("select", { "aria-label": t("travelMode") });
     for (const key of Object.keys(MODES)) mode.append(element("option", { value: key, text: t(key) }));
     mode.value = this.mode;
-    mode.disabled = Boolean(this.networkDraft || this.configuring);
+    mode.disabled = navigationLocked;
     mode.addEventListener("change", () => { this.mode = mode.value; this.draw(); });
     const destination = element("select", { "aria-label": t("destination") });
     destination.append(element("option", { value: "", text: t("chooseDestination") }));
     for (const place of places) destination.append(element("option", { value: place.id, text: place.title }));
     destination.value = this.selected ?? "";
-    destination.disabled = Boolean(this.networkDraft || this.configuring);
+    destination.disabled = navigationLocked;
     destination.addEventListener("change", () => {
       this.selected = destination.value || null;
       this.editing = null; this.configuring = false; this.roadDraft = null; this.tracingAccess = false;
@@ -348,7 +405,7 @@ export class DossierBoard extends Application {
     this.routeSummary = "";
     this.routeAccessSummary = "";
     this.routeError = "";
-    if (this.origin && selected && !this.editing && !this.roadDraft && !this.configuring && !this.reviewing && !this.networkDraft) {
+    if (this.origin && selected && !this.editing && !this.roadDraft && !this.configuring && !this.reviewing && !this.networkDraft && !this.categoryDraft) {
       this.drawRoute(routeControls, overlay, atlas, selected);
     }
     const sidebar = element("nav", { class: "nd-sidebar", "aria-label": t("navigationPlaces") }, routeControls,
@@ -378,7 +435,8 @@ export class DossierBoard extends Application {
       mapScroll, sidebar, panel, zoom),
     element("footer", { class: "nd-statusbar" }, element("span", { text: `${places.length} ${t("places")} / ${atlas.districts.length} ${t("districts")}` }), legal));
     updateResults();
-    if (this.networkDraft && game.user.isGM) this.drawInteractiveNetwork(panel, overlay, roadMarkers);
+    if (this.categoryDraft && game.user.isGM) this.drawCategoryEditor(panel);
+    else if (this.networkDraft && game.user.isGM) this.drawInteractiveNetwork(panel, overlay, roadMarkers);
     else if (this.reviewing && game.user.isGM) this.drawNetworkReview(panel, overlay, atlas);
     else if (this.roadDraft && game.user.isGM) this.drawRoadEditor(panel, overlay, roadMarkers, atlas);
     else if (this.configuring && game.user.isGM) this.drawAtlasEditor(panel, atlas, overlay, roadMarkers);
@@ -487,6 +545,7 @@ export class DossierBoard extends Application {
     const data = this.editing;
     const marker = element("button", { type: "button", class: `nd-marker nd-cat-${data.category} nd-dossier-draft`,
       "aria-label": t("moveDossierMarker"), title: t("moveDossierMarker"), "data-label": t("moveDossierMarker"), text: "✥" });
+    colorCategory(marker, data.category);
     marker.style.left = `${Number(data.x) * 100}%`;
     marker.style.top = `${Number(data.y) * 100}%`;
     this.dossierMarker = marker;
@@ -1287,7 +1346,9 @@ export class DossierBoard extends Application {
 
   drawDossier(panel, place) {
     panel.append(element("p", { class: "nd-eyebrow", text: "LOCATION // DOSSIER" }),
-      element("h2", { text: place.title }), element("p", { class: `nd-category nd-cat-${place.category}`, text: t(place.category) }));
+      element("h2", { text: place.title }), colorCategory(element("p", {
+        class: `nd-category nd-cat-${place.category}`, text: categoryLabel(categoryInfo(place.category))
+      }), place.category));
     if (place.image) {
       const image = element("img", { src: place.image, alt: place.title, class: "nd-illustration" });
       image.addEventListener("error", () => ui.notifications.error(t("imageError")), { once: true });
@@ -1338,6 +1399,68 @@ export class DossierBoard extends Application {
     panel.append(element("h3", { text: t("gmNotes") }), element("p", { class: "nd-description", text: notes }));
   }
 
+  drawCategoryEditor(panel) {
+    requireGM();
+    const form = element("form", { class: "nd-editor nd-category-editor" });
+    panel.append(element("h2", { text: t("manageCategories") }), element("p", { text: t("categoriesHelp") }), form);
+    for (const category of this.categoryDraft) {
+      const group = element("fieldset", { class: "nd-category-fields" });
+      group.style.setProperty("--nd-category", category.color);
+      const name = element("input", { name: `category-name-${category.id}`, type: "text", required: true, maxlength: 100 });
+      name.value = categoryLabel(category);
+      name.addEventListener("input", () => { category.name = name.value; });
+      const color = element("input", { name: `category-color-${category.id}`, type: "color", value: category.color });
+      color.addEventListener("input", () => {
+        category.color = color.value;
+        group.style.setProperty("--nd-category", color.value);
+      });
+      const usage = categoryUsage(category.id);
+      const remove = button(t("deleteCategory"), () => {
+        requireGM();
+        if (categoryUsage(category.id)) throw new Error(t("categoryInUse"));
+        if (this.categoryDraft.length < 2) throw new Error(t("lastCategory"));
+        this.categoryDraft = this.categoryDraft.filter(item => item.id !== category.id);
+        this.draw();
+      }, usage > 0 || this.categoryDraft.length < 2);
+      remove.setAttribute("title", t(usage ? "categoryInUse" : "deleteCategory"));
+      group.append(element("label", {}, element("span", { text: t("categoryName") }), name),
+        element("label", {}, element("span", { text: t("categoryColor") }), color),
+        element("p", { class: "nd-muted", text: `${usage} ${t("places")}` }), remove);
+      form.append(group);
+    }
+    form.append(button(t("addCategory"), () => {
+      requireGM();
+      this.categoryDraft.push({ id: `category-${foundry.utils.randomID()}`, name: t("newCategory"), color: "#62e5ee" });
+      this.draw();
+    }), element("button", { type: "submit", text: t("saveCategories") }), button(t("cancel"), () => {
+      this.categoryDraft = null;
+      this.draw();
+    }));
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      if (this.categorySaving) return;
+      const submit = form.querySelector('[type="submit"]');
+      submit.disabled = true;
+      this.categorySaving = true;
+      try {
+        requireGM();
+        const next = categoriesData(this.categoryDraft);
+        const current = currentCategories();
+        if (JSON.stringify(current) !== this.categoryOriginal) throw new Error(t("categoryConflict"));
+        for (const category of current) {
+          if (!next.some(item => item.id === category.id) && categoryUsage(category.id)) throw new Error(t("categoryInUse"));
+        }
+        await game.settings.set(ID, "categories", next);
+        this.categoryDraft = null;
+        this.draw();
+      } catch (error) { report(error); }
+      finally {
+        this.categorySaving = false;
+        submit.disabled = false;
+      }
+    });
+  }
+
   drawEditor(panel) {
     const data = this.editing;
     const form = element("form", { class: "nd-editor" });
@@ -1352,9 +1475,17 @@ export class DossierBoard extends Application {
     panel.append(element("h2", { text: t(data.id ? "edit" : "addPlace") }), form);
     field("title", "title", { required: true, maxlength: 100 });
     const category = element("select", { name: "category" });
-    for (const key of CATEGORIES) category.append(element("option", { value: key, text: t(key) }));
+    const definitions = currentCategories();
+    if (!definitions.some(item => item.id === data.category)) {
+      category.append(element("option", { value: data.category, text: categoryLabel(categoryInfo(data.category)) }));
+      form.append(element("p", { class: "nd-route-error", text: t("invalidCategory") }));
+    }
+    for (const item of definitions) category.append(element("option", { value: item.id, text: categoryLabel(item) }));
     category.value = data.category;
-    category.addEventListener("change", () => { data.category = category.value; });
+    category.addEventListener("change", () => {
+      data.category = category.value;
+      if (this.dossierMarker) colorCategory(this.dossierMarker, data.category);
+    });
     form.append(element("label", {}, element("span", { text: t("category") }), category));
     field("description", "description", { multiline: true, maxlength: 12000, rows: 6 });
     const district = element("select", { name: "district" });
@@ -1413,6 +1544,7 @@ export class DossierBoard extends Application {
         if (this.tracingAccess) throw new Error(t("finishAccess"));
         const place = placeData({ ...values, ...(data.roadNode ? { roadNode: data.roadNode } : {}), ...(data.access ? { access: data.access } : {}),
           mapImage: currentAtlas().image, x: Number(values.x), y: Number(values.y) });
+        if (!currentCategories().some(category => category.id === place.category)) throw new Error(t("invalidCategory"));
         const atlas = currentAtlas();
         if (place.district && !atlas.districts.some(item => item.id === place.district)) throw new Error(t("invalidDistrict"));
         if (place.roadNode && !atlas.nodes.some(item => item.id === place.roadNode)) throw new Error(t("invalidAccess"));
@@ -1643,6 +1775,10 @@ class DossierMenu extends FormApplication {
 }
 
 Hooks.once("init", () => {
+  game.settings.register(ID, "categories", {
+    scope: "world", config: false, type: Array, default: structuredClone(DEFAULT_CATEGORIES),
+    onChange: () => { for (const board of windows) board.refresh(); }
+  });
   game.settings.register(ID, "mapImage", {
     name: "ND.mapImage", hint: "ND.mapHint", scope: "world", config: false,
     type: String, default: COMMUNITY_MAP,
@@ -1684,6 +1820,7 @@ Hooks.once("init", () => {
         board.selected = placeId;
         board.query = "";
         board.category = "";
+        board.categoryDraft = null;
         board.district = "";
         board.editing = null;
         board.configuring = false;
@@ -1715,6 +1852,7 @@ for (const hook of ["createJournalEntry", "updateJournalEntry", "deleteJournalEn
       if (board.saving) continue;
       // Never retain an edit form or private notes across ownership/user changes.
       board.editing = null;
+      if (!game.user.isGM) board.categoryDraft = null;
       board.configuring = false;
       board.reviewing = false;
       board.roadDraft = null;

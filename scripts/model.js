@@ -2,6 +2,26 @@ export const ID = "neon-dossiers";
 export const COMMUNITY_MAP = `modules/${ID}/assets/night-city-community-unmarked.webp`;
 export const DEFAULT_MAP = COMMUNITY_MAP;
 export const CATEGORIES = ["community", "commerce", "transit", "mystery"];
+export const DEFAULT_CATEGORIES = [
+  { id: "community", name: "", color: "#68e0ce" },
+  { id: "commerce", name: "", color: "#e4b46a" },
+  { id: "transit", name: "", color: "#7ab6ff" },
+  { id: "mystery", name: "", color: "#c998ff" }
+];
+
+export function categoriesData(input) {
+  if (!Array.isArray(input) || !input.length) throw new Error("At least one category is required");
+  const ids = new Set();
+  return input.map(category => {
+    if (!category || typeof category.id !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(category.id) || ids.has(category.id)) {
+      throw new Error("Invalid or duplicate category ID");
+    }
+    ids.add(category.id);
+    const name = boundedText(category.name, 100, !CATEGORIES.includes(category.id));
+    if (typeof category.color !== "string" || !/^#[0-9a-f]{6}$/i.test(category.color)) throw new Error("Invalid category color");
+    return { id: category.id, name, color: category.color };
+  });
+}
 
 export function mapFamily(image) {
   return image;
@@ -37,7 +57,7 @@ export function placeData(input) {
   if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 1 || y < 0 || y > 1) {
     throw new Error("Coordinates must be between zero and one");
   }
-  if (!CATEGORIES.includes(category)) throw new Error("Invalid category");
+  if (typeof category !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(category)) throw new Error("Invalid category");
   const optional = {};
   if (input.mapImage) optional.mapImage = imagePath(input.mapImage, false);
   for (const key of ["district", "roadNode"]) {

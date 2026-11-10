@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { ID, DEFAULT_MAP, imagePath, placeData, noteText, readablePlaces, filterPlaces } from "../scripts/model.js";
+import { ID, DEFAULT_MAP, DEFAULT_CATEGORIES, categoriesData, imagePath, placeData, noteText, readablePlaces, filterPlaces } from "../scripts/model.js";
 import { EXAMPLES } from "./fixtures.js";
 import { crc32, zipFiles, build } from "../tools/package.mjs";
 
@@ -32,7 +32,10 @@ test("coordinates, categories and text are bounded; unexpected fields are discar
   assert.throws(() => placeData({ ...EXAMPLES[0], title: "" }));
   assert.throws(() => placeData({ ...EXAMPLES[0], title: "a".repeat(101) }));
   assert.throws(() => placeData({ ...EXAMPLES[0], description: "a".repeat(12001) }));
-  assert.throws(() => placeData({ ...EXAMPLES[0], category: "unknown" }));
+  for (const category of ["", "a".repeat(65), "space here", "<script>", null, 2]) {
+    assert.throws(() => placeData({ ...EXAMPLES[0], category }));
+  }
+  assert.equal(placeData({ ...EXAMPLES[0], category: "custom-category" }).category, "custom-category");
   assert.throws(() => noteText("a".repeat(12001)));
   assert.throws(() => noteText("\u0000"));
   const malicious = "<script>alert('no execution')</script>";
@@ -40,6 +43,27 @@ test("coordinates, categories and text are bounded; unexpected fields are discar
   assert.equal(value.title, malicious); // The view must render as text, not markup.
   assert.equal(value.notes, undefined);
   assert.equal(value.secret, undefined);
+});
+
+test("custom categories preserve stable IDs and validate names, colors and duplicates", () => {
+  assert.deepEqual(categoriesData(DEFAULT_CATEGORIES), DEFAULT_CATEGORIES);
+  const input = [{ id: "clinics", name: "  Kliniken / \u533b\u7642  ", color: "#AABB00", secret: "not public" }];
+  const clean = categoriesData(input);
+  assert.deepEqual(clean, [{ id: "clinics", name: "Kliniken / \u533b\u7642", color: "#AABB00" }]);
+  clean[0].name = "Changed";
+  assert.equal(input[0].name, "  Kliniken / \u533b\u7642  ");
+  const category = { id: "clinics", name: "Clinics", color: "#62e5ee" };
+  for (const input of [
+    null, {}, [], [null], [category, category],
+    [{ ...category, id: "" }], [{ ...category, id: "a".repeat(65) }], [{ ...category, id: "bad id" }],
+    [{ ...category, name: "" }], [{ ...category, name: "a".repeat(101) }], [{ ...category, name: "\u0000" }],
+    [{ ...category, color: "red" }], [{ ...category, color: "#fff" }], [{ ...category, color: "url(evil)" }]
+  ]) assert.throws(() => categoriesData(input));
+  const entry = { id: "custom", testUserPermission: () => true,
+    getFlag: () => ({ ...EXAMPLES[0], category: "clinics" }) };
+  const places = readablePlaces([entry], {});
+  assert.equal(places.length, 1, "custom and orphaned category IDs never hide existing dossiers");
+  assert.equal(filterPlaces(places, "", "clinics").length, 1);
 });
 
 test("permission gate runs before reading flags and revocation removes cached dossiers", () => {

@@ -98,9 +98,15 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
   Auch beim Anlegen oder Bearbeiten lässt sich die Karte durch Ziehen
   verschieben; ein einzelner Klick setzt den Marker.
 - Einen District auswählen: Rechts erscheinen Threat Level, Fraktionen und
-  die für diese Ansicht sichtbaren POIs. Eine dezente Cyan-Fläche und ein
-  dunkel eingefasster, animierter Neonrand zeigen den District; reduzierte
-  Bewegung deaktiviert die Animation.
+  die für diese Ansicht sichtbaren POIs. Eine dezente neongelbe Fläche und
+  ein gelb-schwarzer Rand im Absperrband-Stil zeigen den District ohne Animation.
+- Unter **SL-WERKZEUGE > Kategorien verwalten** eigene Kategorien mit Namen
+  und Farben anlegen oder die vier Startkategorien ändern. Erst **Kategorien
+  speichern** übernimmt sie für Filter, Marker und Dossiers. Vor dem Löschen
+  einer Kategorie alle zugehörigen Dossiers umsortieren; auch private Dossiers
+  zählen. Mindestens eine Kategorie bleibt erhalten. Namen und Farben sind
+  auch für Spieler sichtbar; die Dossierfreigaben bleiben unverändert.
+  Nach dem Auswählen eines Werkzeugs klappt das SL-Menü automatisch ein.
 - Unter **Karte und Districts** Eckpunkte direkt ziehen, kleine Zwischenpunkte
   zum Einfügen anklicken und ausgewählte Ecken mit **Entf** oder **Eckpunkt löschen**
   entfernen. **Rückgängig / Wiederholen** korrigieren Änderungen.

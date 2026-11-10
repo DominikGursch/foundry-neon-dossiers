@@ -9,8 +9,8 @@ assets, not relicensed under the module's MIT license.
 
 ## City navigation: v0.2.0
 
-Browse Night City on the supplied Community Night City 2045 map, search places, filter four
-categories and open dossiers from markers or the place list. GMs can create,
+Browse Night City on the supplied Community Night City 2045 map, search places, filter
+GM-defined categories and open dossiers from markers or the place list. GMs can create,
 edit and delete places, select local dossier images, position markers by
 dragging them in the dossier editor, clicking the map or entering coordinates, and share or revoke
 dossier access. English and German interface translations are included.
@@ -146,6 +146,17 @@ release. CI artifacts alone do not make the manifest's release URL live.
 
 ## Working with places
 
+**GM TOOLS > Manage categories** lets the GM add, rename and color categories.
+The four original categories are editable starting defaults, not a fixed list.
+Changes apply on **Save categories** and are shared with players in the world
+(stored locally in the browser demo). Names and colors are public metadata;
+do not put GM secrets in them. Stable internal IDs preserve dossier assignments
+when names or colors change. A category cannot be deleted while any dossier,
+including private or retained legacy dossiers, uses it; reassign those dossiers
+first. At least one category must remain. Optional examples use the first
+configured category if their original category has been removed.
+The GM tool menu closes automatically after selecting an action.
+
 **Add place** opens the editor with a centered marker position. Fill in a title,
 category and plain-text description. Click the map while editing, or set X/Y
 between 0 and 1 (left/top = 0, right/bottom = 1). Save creates a core journal
@@ -259,8 +270,8 @@ and Ctrl/Cmd+Z (Shift to redo) restore shape edits. While drawing, click adds a
 corner and drag pans. Click the first corner or **Finish boundary** to close,
 with at least three corners. Redrawing requires confirmation and remains undoable.
 Saving applies the draft; cancelling preserves the original boundaries.
-Selected districts have a translucent cyan fill and a dark-backed glowing
-border with moving dashes; reduced-motion preferences keep the highlight static.
+Selected districts have a subtle neon-yellow fill and a static yellow/black
+perimeter inspired by police barrier tape, distinct from the map's red zones.
 Set `kmAcross` to the campaign horizontal span. The cropped Community map defaults
 to approximately 12.54 km
 (the earlier full-image 18 km assumption adjusted for the crop); these are explicitly

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { ID, DEFAULT_MAP, COMMUNITY_MAP } from "../scripts/model.js";
+import { ID, DEFAULT_MAP, COMMUNITY_MAP, DEFAULT_CATEGORIES } from "../scripts/model.js";
 import { EXAMPLES, DEFAULT_ATLAS } from "./fixtures.js";
 import { presetAtlas } from "../scripts/city.js";
 
@@ -170,6 +170,8 @@ test("v12 lifecycle, GM CRUD, sharing and player revocation with mocked DOM/core
   hooks.get("init")();
   assert.equal(registered.get("mapImage").scope, "world");
   assert.equal(registered.get("mapImage").default, COMMUNITY_MAP);
+  assert.equal(registered.get("categories").scope, "world");
+  assert.deepEqual(registered.get("categories").default, DEFAULT_CATEGORIES);
   assert.deepEqual(registered.get("atlas").default, {}, "unsaved presets must not shadow future road updates");
   assert.equal(registered.get("open").restricted, false);
   assert.ok(registered.get("open").type.prototype instanceof FormApplication);
@@ -760,5 +762,176 @@ test("moving an access node requires confirmation and preserves the network when
     await entry.delete();
     await board.close();
     settings.delete("atlases");
+  }
+});
+
+test("GM tool actions close the menu before redrawing or awaiting a dialog", async () => {
+  game.user = { id: "gm", isGM: true };
+  for (const action of [en.addPlace, en.configureAtlas, en.editNetwork, en.manageCategories]) {
+    const board = newBoard();
+    board.gmToolsOpen = true;
+    board.draw();
+    const menu = board.root.find(node => node.className === "nd-gm-tools");
+    assert.equal(menu.open, true);
+    await findButton(menu, action).fire("click");
+    assert.equal(menu.open, false);
+    assert.equal(board.gmToolsOpen, false);
+    assert.equal(board.root.find(node => node.className === "nd-gm-tools").open, false);
+    await board.close();
+  }
+  const board = newBoard();
+  board.gmToolsOpen = true;
+  board.draw();
+  const menu = board.root.find(node => node.className === "nd-gm-tools");
+  const originalConfirm = Dialog.confirm;
+  Dialog.confirm = async () => {
+    assert.equal(menu.open, false, "async actions close before opening their confirmation");
+    return false;
+  };
+  try { await findButton(menu, en.examples).fire("click"); }
+  finally { Dialog.confirm = originalConfirm; await board.close(); }
+});
+
+test("GM categories stay drafts, preserve assignments and style filters, dossiers and editor markers", async () => {
+  game.user = { id: "gm", isGM: true };
+  const board = newBoard();
+  const legacy = await JournalEntry.create({ name: "Retained legacy dossier", ownership: { default: 0 },
+    flags: { [ID]: { place: { ...EXAMPLES[0], category: "community", mapImage: "worlds/legacy/map.webp" } } } });
+  board.draw();
+  await findButton(board.root, en.manageCategories).fire("click");
+  const communityGroup = board.root.find(node => node.tag === "fieldset");
+  assert.equal(findButton(communityGroup, en.deleteCategory).disabled, true, "retained private dossiers count as usage");
+  await findButton(board.root, en.addCategory).fire("click");
+  const customId = board.categoryDraft.at(-1).id;
+  let form = board.root.querySelector("form");
+  const name = form.elements.namedItem(`category-name-${customId}`);
+  const color = form.elements.namedItem(`category-color-${customId}`);
+  name.value = "Clinics <not markup>";
+  await name.fire("input");
+  color.value = "#aaff00";
+  await color.fire("input");
+  assert.equal(settings.get("categories"), undefined, "category edits stay local until saved");
+  await form.fire("submit");
+  assert.equal(board.categoryDraft, null);
+  assert.equal(settings.get("categories").at(-1).name, "Clinics <not markup>");
+  assert.equal(legacy.getFlag(ID, "place").category, "community");
+
+  await findButton(board.root, en.addPlace).fire("click");
+  form = board.root.querySelector("form");
+  assert.equal(form.elements.namedItem("category").value, DEFAULT_CATEGORIES[0].id);
+  const chooser = form.elements.namedItem("category");
+  chooser.value = customId;
+  await chooser.fire("change");
+  assert.equal(board.dossierMarker.style["--nd-category"], "#aaff00");
+  form.elements.namedItem("title").value = "Custom category clinic";
+  await form.fire("submit");
+  const entry = game.journal.get(board.selected);
+  assert.equal(entry.getFlag(ID, "place").category, customId);
+  const categoryText = board.root.find(node => node.className === `nd-category nd-cat-${customId}`);
+  assert.equal(categoryText.textContent, "Clinics <not markup>");
+  assert.equal(categoryText.style["--nd-category"], "#aaff00");
+  const marker = board.root.find(node => node.attributes["aria-label"] === entry.name);
+  assert.equal(marker.style["--nd-category"], "#aaff00");
+  await findButton(board.root, en.share).fire("click");
+
+  await findButton(board.root, en.manageCategories).fire("click");
+  form = board.root.querySelector("form");
+  form.elements.namedItem(`category-name-${customId}`).value = "Medical";
+  await form.elements.namedItem(`category-name-${customId}`).fire("input");
+  form.elements.namedItem(`category-color-${customId}`).value = "#bb99ff";
+  await form.elements.namedItem(`category-color-${customId}`).fire("input");
+  await form.fire("submit");
+  assert.equal(entry.getFlag(ID, "place").category, customId, "renaming never rewrites dossier IDs");
+  const tab = board.root.find(node => node.textContent.startsWith("Medical ·"));
+  assert.equal(tab.style["--nd-category"], "#bb99ff");
+  await tab.fire("click");
+  assert.equal(board.category, customId);
+
+  await findButton(board.root, en.manageCategories).fire("click");
+  board.categoryDraft.at(-1).name = "Unsaved name";
+  await findButton(board.root, en.cancel).fire("click");
+  assert.equal(settings.get("categories").at(-1).name, "Medical");
+  await findButton(board.root, en.manageCategories).fire("click");
+  game.user = { id: "player", isGM: false };
+  hooks.get("updateUser")();
+  assert.equal(board.categoryDraft, null);
+  assert.equal(board.root.find(node => node.textContent === en.manageCategories), null);
+  assert.throws(() => board.drawCategoryEditor(new Node("section")), /Only a GM/);
+  assert.ok(board.root.find(node => node.textContent.startsWith("Medical ·")));
+  assert.equal(board.root.find(node => node.attributes["aria-label"] === entry.name).style["--nd-category"], "#bb99ff");
+  assert.equal(contains(board.root, "Retained legacy dossier"), false);
+  game.user = { id: "gm", isGM: true };
+  await entry.delete();
+  await legacy.delete();
+  await board.close();
+  settings.delete("categories");
+});
+
+test("category deletion checks late usage; saving rejects conflicts and keeps failed drafts", async () => {
+  game.user = { id: "gm", isGM: true };
+  const unused = { id: "unused", name: "Unused", color: "#aaff00" };
+  settings.set("categories", [...structuredClone(DEFAULT_CATEGORIES), unused]);
+  const board = newBoard();
+  board.category = unused.id;
+  board.draw();
+  await findButton(board.root, en.manageCategories).fire("click");
+  const unusedGroup = board.root.find(node => node.attributes.name === "category-name-unused").parentElement.parentElement;
+  await findButton(unusedGroup, en.deleteCategory).fire("click");
+  const entry = await JournalEntry.create({ name: "Late assignment", ownership: { default: 0 },
+    flags: { [ID]: { place: { ...EXAMPLES[0], category: unused.id } } } });
+  const originalConsole = console.error;
+  console.error = () => {};
+  try {
+    await board.root.querySelector("form").fire("submit");
+    assert.equal(notifications.at(-1)[1], `${en.error} ${en.categoryInUse}`);
+    assert.ok(settings.get("categories").some(category => category.id === unused.id));
+    await entry.delete();
+    await board.root.querySelector("form").fire("submit");
+    assert.equal(settings.get("categories").some(category => category.id === unused.id), false);
+    assert.equal(board.category, "", "a deleted active filter resets to all categories");
+
+    await findButton(board.root, en.manageCategories).fire("click");
+    settings.set("categories", [...settings.get("categories"), unused]);
+    await board.root.querySelector("form").fire("submit");
+    assert.equal(notifications.at(-1)[1], `${en.error} ${en.categoryConflict}`);
+    assert.ok(board.categoryDraft, "concurrent edits are not overwritten");
+    await findButton(board.root, en.cancel).fire("click");
+    await findButton(board.root, en.manageCategories).fire("click");
+    const originalSet = game.settings.set;
+    game.settings.set = async () => { throw new Error("Write failed"); };
+    try { await board.root.querySelector("form").fire("submit"); }
+    finally { game.settings.set = originalSet; }
+    assert.equal(notifications.at(-1)[1], `${en.error} Write failed`);
+    assert.ok(board.categoryDraft);
+    assert.equal(board.root.querySelector("form").querySelector('[type="submit"]').disabled, false);
+    settings.set("categories", [unused]);
+    board.categoryDraft = structuredClone([unused]);
+    board.draw();
+    assert.equal(findButton(board.root, en.deleteCategory).disabled, true, "last category cannot be deleted");
+  } finally {
+    console.error = originalConsole;
+    await board.close();
+    settings.delete("categories");
+  }
+});
+
+test("example dossiers use configured categories when original defaults were removed", async () => {
+  game.user = { id: "gm", isGM: true };
+  settings.set("categories", [{ id: "custom", name: "Custom places", color: "#aaff00" }]);
+  const journals = game.journal.contents;
+  game.journal.contents = [];
+  const board = newBoard();
+  try {
+    board.draw();
+    await findButton(board.root, en.examples).fire("click");
+    assert.equal(game.journal.contents.length, 7);
+    assert.ok(game.journal.contents.every(entry => entry.getFlag(ID, "place").category === "custom"));
+    assert.equal(notifications.at(-1)[1], en.exampleCategoriesReassigned);
+    await findButton(board.root, en.examples).fire("click");
+    assert.equal(game.journal.contents.length, 7, "remapped examples are still idempotent");
+  } finally {
+    await board.close();
+    game.journal.contents = journals;
+    settings.delete("categories");
   }
 });

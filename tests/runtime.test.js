@@ -36,6 +36,8 @@ class Node {
   }
   querySelector(selector) {
     if (selector === '[type="submit"]') return this.find(node => node.attributes.type === "submit");
+    const attribute = selector.match(/^\[([a-z-]+)="([^"]+)"\]$/);
+    if (attribute) return this.find(node => node.attributes[attribute[1]] === attribute[2]);
     return this.find(node => node.tag === selector);
   }
   async fire(event, extra = {}) {
@@ -145,6 +147,24 @@ const findButton = (root, label) => {
   return result;
 };
 const contains = (root, text) => Boolean(root.find(node => node.textContent.includes(text)));
+
+test("district selection has a matching contrasting outline and credits stay inside the sources panel", async () => {
+  const board = newBoard();
+  board.district = "south-night-city";
+  board.draw();
+  const active = board.root.find(node => node.attributes.class?.includes("nd-active-zone"));
+  const halo = board.root.find(node => node.attributes.class === "nd-district-halo");
+  assert.ok(active);
+  assert.ok(halo);
+  assert.equal(halo.attributes.points, active.attributes.points);
+  const footer = board.root.find(node => node.className === "nd-statusbar");
+  const legal = footer.find(node => node.className === "nd-legal");
+  const credit = footer.find(node => node.className === "nd-map-credit");
+  assert.equal(legal.find(node => node === credit), credit);
+  assert.equal(credit.attributes.href, "https://www.reddit.com/r/cyberpunkred/comments/z1744r/night_city_2045_map_cleaned_and_updated/");
+  assert.ok(credit.textContent.includes("Ced23Ric"));
+  await board.close();
+});
 
 test("v12 lifecycle, GM CRUD, sharing and player revocation with mocked DOM/core", async () => {
   hooks.get("init")();
@@ -387,6 +407,10 @@ test("district corners drag live, insert/delete, undo/redo and cancel without ch
   await corner().fire("pointerdown", { button: 0, pointerId: 3, clientX: p.x * 1000, clientY: p.y * 1000 });
   documentEvents.get("pointermove")({ pointerId: 3, clientX: p.x * 1000 + 50, clientY: p.y * 1000 + 50 });
   assert.ok(Math.abs(district.polygon[0].x - (p.x + .05)) < 1e-10, "corner previews before release");
+  const active = board.root.find(node => node.attributes["data-district"] === district.id);
+  const halo = board.root.find(node => node.attributes["data-district-halo"] === district.id);
+  assert.equal(halo.attributes.points, active.attributes.points, "halo follows the live district preview");
+  assert.ok(active.attributes.points.startsWith(`${district.polygon[0].x * board.atlasDraft.width},`));
   assert.deepEqual(presetAtlas(COMMUNITY_MAP).districts[0].polygon, original, "preview cannot mutate the preset");
   documentEvents.get("pointerup")({ pointerId: 3 });
   const dragged = structuredClone(district.polygon);
@@ -559,6 +583,23 @@ test("scene HUD auto-mounts, follows the canvas, handles picks and drops revoked
   assert.equal(board.sceneMode, true);
   assert.equal(ticks.size, 1, "opening repeatedly does not add tickers");
   assert.ok(board.mapElement.children.every(node => node.tag !== "img"), "native canvas background is not duplicated");
+  assert.deepEqual(
+    ["top", "left", "width", "height"].map(key => board.mapElement.parentElement.style[key]),
+    ["0px", "0px", "1000px", "800px"],
+    "overlay viewport covers the renderer, not just the layout"
+  );
+  const previousViewport = board.mapElement.parentElement;
+  board.draw();
+  assert.notEqual(board.mapElement.parentElement, previousViewport);
+  assert.equal(board.mapElement.parentElement.style.width, "1000px", "redraw sizes the replacement viewport");
+  canvas.app.view.getBoundingClientRect = () => ({ left: 20, top: 40, width: 900, height: 600 });
+  board.updateSceneTransform();
+  assert.deepEqual(
+    ["top", "left", "width", "height"].map(key => board.mapElement.parentElement.style[key]),
+    ["40px", "20px", "900px", "600px"],
+    "renderer resize moves and resizes the overlay viewport"
+  );
+  canvas.app.view.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1000, height: 800 });
   assert.equal(board.root.find(node => node.textContent === en.edit), null);
   const origin = board.root.find(node => node.tag === "select" && node.attributes["aria-label"] === en.start);
   origin.value = a.id;

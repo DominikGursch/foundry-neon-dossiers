@@ -185,11 +185,14 @@ export class DossierBoard extends Application {
     if (!this.sceneMode) map.append(picture);
     const overlay = svg("svg", { class: "nd-overlay", viewBox: `0 0 ${atlas.width} ${atlas.height}`, preserveAspectRatio: "none" });
     for (const district of (this.configuring && this.atlasDraft ? this.atlasDraft.districts : atlas.districts)) {
+      const points = district.polygon.map(p => `${p.x * atlas.width},${p.y * atlas.height}`).join(" ");
+      const active = this.configuring
+        ? this.districtEditing === district.id && !this.districtDrawing : this.district === district.id;
+      if (active) overlay.append(svg("polygon", { points, "data-district-halo": district.id, class: "nd-district-halo" }));
       overlay.append(svg("polygon", {
-        points: district.polygon.map(p => `${p.x * atlas.width},${p.y * atlas.height}`).join(" "),
+        points,
         "data-district": district.id,
-        class: `nd-district-zone nd-threat-${district.threat}${(this.configuring
-          ? this.districtEditing === district.id && !this.districtDrawing : this.district === district.id) ? " nd-active-zone" : ""}`
+        class: `nd-district-zone nd-threat-${district.threat}${active ? " nd-active-zone" : ""}`
       }));
     }
     const markers = element("div", { class: "nd-markers" });
@@ -365,7 +368,7 @@ export class DossierBoard extends Application {
     const credits = element("a", { href: preset?.url ?? ATLAS_SOURCE, target: "_blank", rel: "noopener noreferrer",
       text: preset?.credit ?? t("customMap"), class: "nd-map-credit" });
     const legal = element("details", { class: "nd-legal" }, element("summary", { text: t("credits") }),
-      element("p", { text: t("disclaimer") }));
+      element("div", { class: "nd-legal-content" }, credits, element("p", { text: t("disclaimer") })));
     this.root.append(element("header", { class: "nd-heading" },
       element("div", { class: "nd-wordmark" }, element("strong", { text: "NIGHT CITY" }),
         element("span", { text: "NEON DOSSIERS / CITYNET 2045" })),
@@ -373,7 +376,7 @@ export class DossierBoard extends Application {
         element("strong", { text: t(game.user.isGM ? "gmView" : "playerView") }))),
     tools, categories, element("div", { class: `nd-layout${this.sidebarOpen ? " nd-sidebar-open" : ""}` },
       mapScroll, sidebar, panel, zoom),
-    element("footer", { class: "nd-statusbar" }, element("span", { text: `${places.length} ${t("places")} / ${atlas.districts.length} ${t("districts")}` }), credits, legal));
+    element("footer", { class: "nd-statusbar" }, element("span", { text: `${places.length} ${t("places")} / ${atlas.districts.length} ${t("districts")}` }), legal));
     updateResults();
     if (this.networkDraft && game.user.isGM) this.drawInteractiveNetwork(panel, overlay, roadMarkers);
     else if (this.reviewing && game.user.isGM) this.drawNetworkReview(panel, overlay, atlas);
@@ -1149,6 +1152,7 @@ export class DossierBoard extends Application {
           const points = district.polygon.map(point => `${point.x * atlas.width},${point.y * atlas.height}`);
           outline.setAttribute("points", [...points, ...(!this.districtDrawing && points.length > 2 ? [points[0]] : [])].join(" "));
           overlay.querySelector(`[data-district="${district.id}"]`)?.setAttribute("points", points.join(" "));
+          overlay.querySelector(`[data-district-halo="${district.id}"]`)?.setAttribute("points", points.join(" "));
         };
         updateOutline();
         overlay.append(outline);
@@ -1587,8 +1591,19 @@ export class SceneDossierBoard extends DossierBoard {
 
   updateSceneTransform() {
     if (!this.mapElement || !this.root?.isConnected || !canvas.ready) return;
+    const rendererRect = canvas.app.view.getBoundingClientRect();
+    const mapViewport = this.mapElement.parentElement;
+    const bounds = `${rendererRect.top},${rendererRect.left},${rendererRect.width},${rendererRect.height}`;
+    if (this.sceneViewport !== mapViewport || this.sceneViewportBounds !== bounds) {
+      Object.assign(mapViewport.style, {
+        top: `${rendererRect.top}px`, left: `${rendererRect.left}px`,
+        width: `${rendererRect.width}px`, height: `${rendererRect.height}px`
+      });
+      this.sceneViewport = mapViewport;
+      this.sceneViewportBounds = bounds;
+    }
     const transform = sceneTransform(canvas.stage.worldTransform, canvas.dimensions,
-      canvas.app.view.getBoundingClientRect(), this.mapElement.parentElement.getBoundingClientRect());
+      rendererRect, mapViewport.getBoundingClientRect());
     const { a, b, c, d, tx, ty } = transform;
     this.mapElement.style.transform = `matrix(${a},${b},${c},${d},${tx},${ty})`;
     this.mapElement.style.setProperty("--nd-inverse-scale", String(1 / Math.hypot(a, b)));

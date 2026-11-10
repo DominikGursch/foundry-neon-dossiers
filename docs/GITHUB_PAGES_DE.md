@@ -89,9 +89,8 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
   und keine schwarzen Seitenstreifen. Sie startet ohne interaktive POIs;
   mit **SL-WERKZEUGE > Ort hinzufügen** legt die Spielleitung eigene Orte an.
 - Einen nummerierten Marker anklicken: Rechts öffnet sich sein Dossier.
-  Die Marker sind kompakte rechteckige Terminal-Tags. Ein dezenter
-  Monitorrahmen mit statischem Rauschen und Scanlines liegt über der Karte;
-  Bedienelemente bleiben frei und die Kartenbilder selbst unverändert.
+  Die Marker sind kompakte rechteckige Terminal-Tags. Die Kartenansicht
+  bleibt über die Ränder der Bedienelemente hinweg sichtbar.
 - Mit **Dossier bearbeiten** lässt sich der Marker auf der Karte ziehen
   oder mit den Pfeiltasten verschieben. Erst **Dossier speichern** übernimmt
   die neue Position. Ein vorhandener Straßenzugang muss nach dem Verschieben
@@ -99,8 +98,9 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
   Auch beim Anlegen oder Bearbeiten lässt sich die Karte durch Ziehen
   verschieben; ein einzelner Klick setzt den Marker.
 - Einen District auswählen: Rechts erscheinen Threat Level, Fraktionen und
-  die für diese Ansicht sichtbaren POIs. Eine kräftigere rote Fläche und ein
-  animierter Leuchtrand zeigen den District; reduzierte Bewegung deaktiviert die Animation.
+  die für diese Ansicht sichtbaren POIs. Eine dezente Cyan-Fläche und ein
+  dunkel eingefasster, animierter Neonrand zeigen den District; reduzierte
+  Bewegung deaktiviert die Animation.
 - Unter **Karte und Districts** Eckpunkte direkt ziehen, kleine Zwischenpunkte
   zum Einfügen anklicken und ausgewählte Ecken mit **Entf** oder **Eckpunkt löschen**
   entfernen. **Rückgängig / Wiederholen** korrigieren Änderungen.

@@ -27,10 +27,11 @@ storage and permission layer; illustrations remain local files.
 The independently authored red/black terminal layout has a
 compact header, color-coded category strip, large draggable map, numbered
 markers, collapsible navigation and floating right-hand dossier cards.
-Compact rectangular dossier tags and a subtle monitor frame, static grain
-and scanlines reinforce the RED terminal look. The effects do not intercept
-input, animate, distort map coordinates or cover the dossier/editor cards.
-High-contrast display preferences disable the monitor overlays.
+Compact rectangular dossier tags reinforce the RED terminal look. In the
+standalone board, a subtle monitor frame, static grain and scanlines do not
+intercept input, animate, distort map coordinates or cover the dossier/editor
+cards. The scene HUD leaves the map unobstructed; high-contrast display
+preferences disable the standalone monitor overlays.
 
 **Only included map:** Ced23Ric's Community Night City 2045 map, with
 17 district annotations and seven optional example dossiers. There is no map
@@ -51,7 +52,7 @@ This image depicts an intact City Center rather than the later Atlas Hot Zone.
 approximations**, not official ratings or complete street data. Sources,
 attributions and exact map modifications are recorded in
 [`docs/ASSET_SOURCES.md`](docs/ASSET_SOURCES.md). Copyright credits are also
-visible beneath the map. Historical Atlas provenance is retained; credits
+available under **Credits** beneath the map. Historical Atlas provenance is retained; credits
 removed from the community sidebars are reproduced in the shipped notices.
 
 **Target: Foundry VTT v12 only.** This prerelease uses core v12 Application,
@@ -258,8 +259,8 @@ and Ctrl/Cmd+Z (Shift to redo) restore shape edits. While drawing, click adds a
 corner and drag pans. Click the first corner or **Finish boundary** to close,
 with at least three corners. Redrawing requires confirmation and remains undoable.
 Saving applies the draft; cancelling preserves the original boundaries.
-Selected districts have a stronger red fill, glowing border and moving border
-dashes; reduced-motion preferences keep the highlight static.
+Selected districts have a translucent cyan fill and a dark-backed glowing
+border with moving dashes; reduced-motion preferences keep the highlight static.
 Set `kmAcross` to the campaign horizontal span. The cropped Community map defaults
 to approximately 12.54 km
 (the earlier full-image 18 km assumption adjusted for the crop); these are explicitly

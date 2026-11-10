@@ -1,10 +1,11 @@
-import { ID, COMMUNITY_MAP, DEFAULT_CATEGORIES, categoriesData, imagePath, placeData, noteText, readablePlaces, filterPlaces, placesOnMap, mapFamily } from "./model.js";
+import { ID, COMMUNITY_MAP, DEFAULT_CATEGORIES, categoriesData, markerCode, imagePath, placeData, noteText, readablePlaces, filterPlaces, placesOnMap, mapFamily } from "./model.js";
 import { MODES, atlasData, findRoute, roadAccess } from "./atlas.js";
 import { MAP_PRESETS, starterPlaces, ATLAS_SOURCE, presetAtlas } from "./city.js";
 import { currentAtlas, synchronizeScene, migrateCommunityMap } from "./scene.js";
 import { sceneTransform, scenePoint } from "./canvas.js";
 import { inspectNetwork } from "./network.js";
 import { RoadDraft } from "./road-draft.js";
+import { migratePlaceNumbers, createNumberedPlace, updateNumberedPlace } from "./numbering.js";
 
 const t = key => game.i18n.localize(`ND.${key}`);
 const windows = new Set();
@@ -32,7 +33,8 @@ function button(label, action, disabled = false) {
 
 function report(error) {
   console.error(`${ID}:`, error);
-  ui.notifications.error(`${t("error")} ${error.message}`);
+  const message = t(error.message);
+  ui.notifications.error(`${t("error")} ${message === `ND.${error.message}` ? error.message : message}`);
 }
 
 function requireGM() {
@@ -101,11 +103,7 @@ async function createPlace(data) {
   requireGM();
   if (!currentCategories().some(category => category.id === data.category)) throw new Error(t("invalidCategory"));
   const place = placeData({ ...data, mapImage: data.mapImage ?? currentAtlas().image });
-  return JournalEntry.create({
-    name: place.title,
-    ownership: { default: 0 },
-    flags: { [ID]: { place } }
-  });
+  return createNumberedPlace(place);
 }
 
 export class DossierBoard extends Application {
@@ -121,6 +119,7 @@ export class DossierBoard extends Application {
     this.query = "";
     this.category = "";
     this.selected = null;
+    this.destination = null;
     this.editing = null;
     this.saving = false;
     this.district = "";
@@ -135,7 +134,6 @@ export class DossierBoard extends Application {
     this.reviewMode = "car";
     this.networkDraft = null;
     this.zoom = 1;
-    this.sidebarOpen = false;
     windows.add(this);
   }
 
@@ -188,10 +186,13 @@ export class DossierBoard extends Application {
     if (!atlas.districts.some(district => district.id === this.district)) this.district = "";
     if (this.category && !categoryDefinitions.some(category => category.id === this.category)) this.category = "";
     const navigationLocked = Boolean(this.networkDraft || this.configuring || this.categoryDraft);
+    const editingLocked = Boolean(navigationLocked || this.editing || this.roadDraft);
     if (this.origin?.id && !places.some(place => place.id === this.origin.id)) this.origin = null;
     else if (this.origin?.id) this.origin = places.find(place => place.id === this.origin.id);
     const selected = places.find(place => place.id === this.selected);
     if (!selected) this.selected = null;
+    if (this.destination && !places.some(place => place.id === this.destination)) this.destination = null;
+    const routeTarget = places.find(place => place.id === (this.destination ?? this.selected));
     // Permission changes discard the entire rendered dossier, not just its marker.
     this.root.replaceChildren();
     const search = element("input", { type: "search", placeholder: t("search"), "aria-label": t("search"), value: this.query });
@@ -235,14 +236,14 @@ export class DossierBoard extends Application {
     const updateResults = () => {
       list.replaceChildren();
       markers.replaceChildren();
-      const results = filterPlaces(places, this.query, this.category).filter(place => !this.district || place.district === this.district);
+      const results = filterPlaces(places, this.query, this.category);
       if (!results.length) list.append(element("p", { text: t("noPlaces") }));
       for (const place of results) {
         const select = () => {
           if (this.editing || this.roadDraft || this.networkDraft || this.categoryDraft) return;
-          this.configuring = false; this.reviewing = false; this.sidebarOpen = false; this.selected = place.id; this.draw();
+          this.configuring = false; this.reviewing = false; this.selected = place.id; this.destination = place.id; this.draw();
         };
-        const index = String(places.indexOf(place) + 1).padStart(2, "0");
+        const index = markerCode(place, categoryDefinitions);
         const row = button(place.title, select);
         row.className = `nd-place-row nd-cat-${place.category}${place.id === this.selected ? " nd-selected" : ""}`;
         colorCategory(row, place.category, categoryDefinitions);
@@ -260,28 +261,42 @@ export class DossierBoard extends Application {
       }
     };
     const roadMarkers = element("div", { class: "nd-markers" });
-    map.append(roadMarkers);
+    const districtMarkers = element("div", { class: "nd-markers nd-district-markers" });
+    if (editingLocked) districtMarkers.setAttribute("hidden", "");
+    map.append(districtMarkers, roadMarkers);
     search.addEventListener("input", () => { this.query = search.value; updateResults(); });
-    const districts = element("select", { "aria-label": t("districts") });
-    districts.append(element("option", { value: "", text: t("allDistricts") }));
-    for (const district of atlas.districts) districts.append(element("option", { value: district.id, text: district.name }));
-    districts.value = this.district;
-    districts.disabled = navigationLocked;
-    districts.addEventListener("change", () => {
-      this.district = districts.value;
+    const districtList = element("nav", { class: "nd-district-list nd-list", "aria-label": t("districts") });
+    const selectDistrict = id => {
+      if (editingLocked) return;
+      this.district = id;
       this.selected = null;
       this.editing = null;
       this.configuring = false;
       this.reviewing = false;
       this.roadDraft = null;
       this.tracingAccess = false;
-      this.sidebarOpen = false;
       this.draw();
-    });
-    const toggle = button(t("navigationPlaces"), () => { this.sidebarOpen = !this.sidebarOpen; this.draw(); });
-    toggle.disabled = navigationLocked;
-    toggle.setAttribute("aria-expanded", String(this.sidebarOpen));
-    const tools = element("div", { class: "nd-tools" }, search, districts, toggle);
+    };
+    const allDistricts = button(t("allDistricts"), () => selectDistrict(""), editingLocked);
+    allDistricts.setAttribute("aria-pressed", String(!this.district));
+    districtList.append(allDistricts);
+    for (const [index, district] of atlas.districts.entries()) {
+      const code = `D-${String(index + 1).padStart(2, "0")}`;
+      const row = button(district.name, () => selectDistrict(district.id), editingLocked);
+      row.className = `nd-district-row nd-place-row nd-threat-${district.threat}`;
+      row.setAttribute("data-index", code);
+      row.setAttribute("aria-pressed", String(this.district === district.id));
+      districtList.append(row);
+      const center = district.polygon.reduce((sum, point) => ({ x: sum.x + point.x, y: sum.y + point.y }), { x: 0, y: 0 });
+      const marker = button(code, () => selectDistrict(district.id), editingLocked);
+      marker.className = `nd-marker nd-district-marker${this.district === district.id ? " nd-selected" : ""}`;
+      marker.setAttribute("aria-label", `${t("district")}: ${district.name}`);
+      marker.setAttribute("data-label", district.name);
+      marker.style.left = `${center.x / district.polygon.length * 100}%`;
+      marker.style.top = `${center.y / district.polygon.length * 100}%`;
+      districtMarkers.append(marker);
+    }
+    const tools = element("div", { class: "nd-tools" }, search);
     if (game.user.isGM) {
       const gmTools = element("details", { class: "nd-gm-tools" }, element("summary", { text: t("gmTools") }));
       gmTools.open = this.gmToolsOpen ?? false;
@@ -300,6 +315,7 @@ export class DossierBoard extends Application {
         this.reviewing = false;
         this.roadDraft = null;
         this.tracingAccess = false;
+        this.pickingOrigin = false;
         this.editing = { title: "", category: categoryDefinitions[0].id, description: "", image: "", x: 0.5, y: 0.5 };
         this.draw();
       }), gmAction(t("examples"), async () => {
@@ -324,7 +340,6 @@ export class DossierBoard extends Application {
         this.reviewing = false;
         this.roadDraft = null;
         this.pickingOrigin = false;
-        this.sidebarOpen = false;
         this.categoryDraft = currentCategories();
         this.categoryOriginal = JSON.stringify(this.categoryDraft);
         this.draw();
@@ -337,7 +352,6 @@ export class DossierBoard extends Application {
         this.districtPoint = null; this.districtHistory = []; this.districtFuture = [];
         this.atlasDraft = null;
         this.configuring = true;
-        this.sidebarOpen = false;
         this.draw();
       }), gmAction(t("editNetwork"), () => {
         this.editing = null;
@@ -349,7 +363,6 @@ export class DossierBoard extends Application {
         this.networkTool = "select";
         this.networkLastNode = null;
         this.pickingOrigin = false;
-        this.sidebarOpen = false;
         this.draw();
       }), gmAction(t("scene"), async () => {
         requireGM();
@@ -371,33 +384,34 @@ export class DossierBoard extends Application {
     });
     closePanel.className = "nd-close-panel";
     panel.append(closePanel);
-    const routeControls = element("section", { class: "nd-route-controls" }, element("h3", { text: t("navigation") }));
+    const routeControls = element("section", { class: "nd-route-controls" }, element("h3", { text: t("route") }));
     const origin = element("select", { "aria-label": t("start") });
     origin.append(element("option", { value: "", text: this.origin && !this.origin.id ? t("mapStart") : t("chooseStart") }));
-    for (const place of places) origin.append(element("option", { value: place.id, text: place.title }));
+    for (const place of places) origin.append(element("option", { value: place.id, text: `${markerCode(place, categoryDefinitions)} · ${place.title}` }));
     origin.value = this.origin?.id ?? "";
-    origin.disabled = navigationLocked;
+    origin.disabled = editingLocked;
     origin.addEventListener("change", () => { this.origin = places.find(place => place.id === origin.value) ?? null; this.draw(); });
     const mode = element("select", { "aria-label": t("travelMode") });
     for (const key of Object.keys(MODES)) mode.append(element("option", { value: key, text: t(key) }));
     mode.value = this.mode;
-    mode.disabled = navigationLocked;
+    mode.disabled = editingLocked;
     mode.addEventListener("change", () => { this.mode = mode.value; this.draw(); });
     const destination = element("select", { "aria-label": t("destination") });
     destination.append(element("option", { value: "", text: t("chooseDestination") }));
-    for (const place of places) destination.append(element("option", { value: place.id, text: place.title }));
-    destination.value = this.selected ?? "";
-    destination.disabled = navigationLocked;
+    for (const place of places) destination.append(element("option", { value: place.id, text: `${markerCode(place, categoryDefinitions)} · ${place.title}` }));
+    destination.value = routeTarget?.id ?? "";
+    destination.disabled = editingLocked;
     destination.addEventListener("change", () => {
       this.selected = destination.value || null;
+      this.destination = this.selected;
       this.editing = null; this.configuring = false; this.roadDraft = null; this.tracingAccess = false;
       this.reviewing = false;
       this.draw();
     });
     routeControls.append(element("label", {}, element("span", { text: t("start") }), origin), mode,
       element("label", {}, element("span", { text: t("destination") }), destination),
-      button(t(this.pickingOrigin ? "cancel" : "pickStart"), () => { this.pickingOrigin = !this.pickingOrigin; this.draw(); }),
-      button(t("clearRoute"), () => { this.origin = null; this.pickingOrigin = false; this.draw(); }));
+      button(t(this.pickingOrigin ? "cancel" : "pickStart"), () => { this.pickingOrigin = !this.pickingOrigin; this.draw(); }, editingLocked),
+      button(t("clearRoute"), () => { this.origin = null; this.pickingOrigin = false; this.draw(); }, editingLocked));
     if (this.pickingOrigin) routeControls.append(element("p", { text: t("pickStartHelp") }));
     if (this.origin) {
       overlay.append(svg("circle", { cx: this.origin.x * atlas.width, cy: this.origin.y * atlas.height, r: 10, class: "nd-origin" }));
@@ -405,12 +419,14 @@ export class DossierBoard extends Application {
     this.routeSummary = "";
     this.routeAccessSummary = "";
     this.routeError = "";
-    if (this.origin && selected && !this.editing && !this.roadDraft && !this.configuring && !this.reviewing && !this.networkDraft && !this.categoryDraft) {
-      this.drawRoute(routeControls, overlay, atlas, selected);
+    if (this.origin && routeTarget && !editingLocked && !this.reviewing) {
+      this.drawRoute(routeControls, overlay, atlas, routeTarget);
     }
-    const sidebar = element("nav", { class: "nd-sidebar", "aria-label": t("navigationPlaces") }, routeControls,
-      element("h3", { text: `${t("places")} // ${places.length}` }), list);
-    if (!this.sidebarOpen) sidebar.setAttribute("hidden", "");
+    const sidebar = element("aside", { class: "nd-sidebar nd-route-sidebar", "aria-label": t("route") }, routeControls);
+    const leftSidebar = element("aside", { class: `nd-places-sidebar${editingLocked || this.reviewing ? " nd-editing" : ""}`, "aria-label": t("places") },
+      element("div", { class: "nd-dossier-section" }, panel),
+      element("section", { class: "nd-district-section" }, element("h3", { text: t("districts") }), districtList),
+      element("section", { class: "nd-places-section" }, element("h3", { text: `${t("places")} // ${places.length}` }), list));
     const mapScroll = element("div", { class: "nd-map-scroll", tabindex: "0", "aria-label": t("mapControls") }, map);
     this.mapScroll = this.sceneMode ? null : mapScroll;
     const zoom = element("div", { class: "nd-map-controls" },
@@ -431,8 +447,8 @@ export class DossierBoard extends Application {
         element("span", { text: "NEON DOSSIERS / CITYNET 2045" })),
       element("div", { class: "nd-connection" }, element("span", { text: t("cityLink") }),
         element("strong", { text: t(game.user.isGM ? "gmView" : "playerView") }))),
-    tools, categories, element("div", { class: `nd-layout${this.sidebarOpen ? " nd-sidebar-open" : ""}` },
-      mapScroll, sidebar, panel, zoom),
+    tools, categories, element("div", { class: "nd-layout" },
+      mapScroll, leftSidebar, sidebar, zoom),
     element("footer", { class: "nd-statusbar" }, element("span", { text: `${places.length} ${t("places")} / ${atlas.districts.length} ${t("districts")}` }), legal));
     updateResults();
     if (this.categoryDraft && game.user.isGM) this.drawCategoryEditor(panel);
@@ -445,7 +461,6 @@ export class DossierBoard extends Application {
     else if (this.district) this.drawDistrict(panel, atlas.districts.find(district => district.id === this.district), places);
     else {
       panel.className += " nd-welcome";
-      if (this.welcomeDismissed) panel.setAttribute("hidden", "");
       panel.append(element("p", { class: "nd-eyebrow", text: "CITY ARCHIVE // 2045" }),
         element("h2", { text: t("welcomeTitle") }), element("p", { text: t("choosePlace") }),
         element("p", { class: "nd-muted", text: t("mapHelp") }));
@@ -1098,7 +1113,9 @@ export class DossierBoard extends Application {
       element("h3", { text: t("districtPlaces") }));
     const visible = places.filter(place => place.district === district.id);
     if (!visible.length) panel.append(element("p", { text: t("noPlaces") }));
-    for (const place of visible) panel.append(button(place.title, () => { this.selected = place.id; this.draw(); }));
+    for (const place of visible) panel.append(button(place.title, () => {
+      this.selected = place.id; this.destination = place.id; this.draw();
+    }));
   }
 
   mapPoint(clientX, clientY) {
@@ -1345,6 +1362,7 @@ export class DossierBoard extends Application {
   }
 
   drawDossier(panel, place) {
+    panel.append(element("p", { class: "nd-eyebrow", text: markerCode(place, currentCategories()) }));
     panel.append(element("p", { class: "nd-eyebrow", text: "LOCATION // DOSSIER" }),
       element("h2", { text: place.title }), colorCategory(element("p", {
         class: `nd-category nd-cat-${place.category}`, text: categoryLabel(categoryInfo(place.category))
@@ -1361,10 +1379,6 @@ export class DossierBoard extends Application {
       panel.append(cover);
     }
     panel.append(element("p", { class: "nd-description", text: place.description }));
-    if (this.routeSummary) panel.append(element("p", { class: "nd-route-summary", text: this.routeSummary }),
-      element("p", { class: "nd-muted", text: t(this.mode === "av" ? "flightEstimate" : "routeEstimate") }));
-    if (this.routeAccessSummary) panel.append(element("p", { class: "nd-muted", text: this.routeAccessSummary }));
-    if (this.routeError) panel.append(element("p", { class: "nd-route-error", role: "status", text: this.routeError }));
     const district = currentAtlas().districts.find(district => district.id === place.district);
     if (district) panel.append(button(`${t("district")}: ${district.name}`, () => {
       this.district = district.id; this.selected = null; this.draw();
@@ -1377,6 +1391,7 @@ export class DossierBoard extends Application {
     panel.append(button(t("edit"), () => {
       this.editing = structuredClone(place);
       this.tracingAccess = false;
+      this.pickingOrigin = false;
       this.draw();
     }), button(t(shared ? "unshare" : "share"), async () => {
       requireGM();
@@ -1414,6 +1429,10 @@ export class DossierBoard extends Application {
         category.color = color.value;
         group.style.setProperty("--nd-category", color.value);
       });
+      const prefix = element("input", { name: `category-prefix-${category.id}`, type: "text", required: true,
+        maxlength: 4, pattern: "[A-Za-z][A-Za-z0-9]{0,3}" });
+      prefix.value = category.prefix;
+      prefix.addEventListener("input", () => { category.prefix = prefix.value; });
       const usage = categoryUsage(category.id);
       const remove = button(t("deleteCategory"), () => {
         requireGM();
@@ -1424,13 +1443,15 @@ export class DossierBoard extends Application {
       }, usage > 0 || this.categoryDraft.length < 2);
       remove.setAttribute("title", t(usage ? "categoryInUse" : "deleteCategory"));
       group.append(element("label", {}, element("span", { text: t("categoryName") }), name),
+        element("label", {}, element("span", { text: t("categoryPrefix") }), prefix),
         element("label", {}, element("span", { text: t("categoryColor") }), color),
         element("p", { class: "nd-muted", text: `${usage} ${t("places")}` }), remove);
       form.append(group);
     }
     form.append(button(t("addCategory"), () => {
       requireGM();
-      this.categoryDraft.push({ id: `category-${foundry.utils.randomID()}`, name: t("newCategory"), color: "#62e5ee" });
+      this.categoryDraft = categoriesData([...this.categoryDraft,
+        { id: `category-${foundry.utils.randomID()}`, name: t("newCategory"), color: "#62e5ee" }]);
       this.draw();
     }), element("button", { type: "submit", text: t("saveCategories") }), button(t("cancel"), () => {
       this.categoryDraft = null;
@@ -1554,7 +1575,7 @@ export class DossierBoard extends Application {
         if (data.id) {
           entry = game.journal.get(data.id);
           if (!entry) throw new Error(t("missingPlace"));
-          await entry.update({ name: place.title, [`flags.${ID}.place`]: place });
+          await updateNumberedPlace(entry, place);
         } else entry = await createPlace(place);
         // Keep the new id if the private note save fails, so a retry cannot duplicate the place.
         data.id = entry.id;
@@ -1775,6 +1796,9 @@ class DossierMenu extends FormApplication {
 }
 
 Hooks.once("init", () => {
+  game.settings.register(ID, "markerCounters", {
+    scope: "world", config: false, type: Object, default: {}
+  });
   game.settings.register(ID, "categories", {
     scope: "world", config: false, type: Array, default: structuredClone(DEFAULT_CATEGORIES),
     onChange: () => { for (const board of windows) board.refresh(); }
@@ -1806,6 +1830,7 @@ Hooks.once("init", () => {
   });
   game.modules.get(ID).api = Object.freeze({
     open: async ({ placeId } = {}) => {
+      await migratePlaceNumbers().catch(report);
       if (!managedCanvas()) {
         if (!game.user.isGM) {
           ui.notifications.warn(t("sceneUnavailable"));
@@ -1818,6 +1843,7 @@ Hooks.once("init", () => {
       if (!board) throw new Error(t("sceneUnavailable"));
       if (placeId) {
         board.selected = placeId;
+        board.destination = placeId;
         board.query = "";
         board.category = "";
         board.categoryDraft = null;
@@ -1873,7 +1899,7 @@ function syncIfGM() {
 }
 
 Hooks.once("ready", async () => {
-  try { await migrateCommunityMap(); syncIfGM(); mountSceneBoard(); }
+  try { await migrateCommunityMap(); await migratePlaceNumbers().catch(report); syncIfGM(); mountSceneBoard(); }
   catch (error) { report(error); }
 });
 Hooks.on("canvasReady", () => {

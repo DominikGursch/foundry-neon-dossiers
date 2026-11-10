@@ -289,14 +289,15 @@ test("districts and route origins respect visibility and drop revoked cached loc
   board.draw();
   assert.ok(board.root.find(node => node.className === "nd-route-summary"));
   const panel = board.root.find(node => node.className === "nd-panel");
-  assert.ok(contains(panel, en.routeEstimate), "route status remains visible when the navigation drawer is closed");
+  const routePanel = board.root.find(node => node.className === "nd-sidebar nd-route-sidebar");
+  assert.ok(contains(routePanel, en.routeEstimate), "route status remains visible in the fixed right band");
   assert.ok(!contains(panel, en.campaignDefaults), "normal player dossiers do not display campaign/editor guidance");
   assert.ok(board.root.find(node => node.attributes.class === "nd-route-line nd-route-flow"), "flow follows the ordered route");
   assert.ok(board.routeSummary.includes("→"), "the summary identifies start and destination");
   settings.set("atlases", { [DEFAULT_MAP]: { ...presetAtlas(DEFAULT_MAP), nodes: [], edges: [] } });
   board.draw();
-  assert.ok(contains(board.root.find(node => node.className === "nd-panel"), en.noRoads),
-    "route errors remain visible in the selected dossier");
+  assert.ok(contains(board.root.find(node => node.className === "nd-sidebar nd-route-sidebar"), en.noRoads),
+    "route errors remain visible in the right band");
   settings.set("atlases", { [DEFAULT_MAP]: atlas });
   board.district = "the-glen";
   board.selected = null;
@@ -810,13 +811,21 @@ test("GM categories stay drafts, preserve assignments and style filters, dossier
   await name.fire("input");
   color.value = "#aaff00";
   await color.fire("input");
+  const prefix = form.elements.namedItem(`category-prefix-${customId}`);
+  prefix.value = "pu";
+  await prefix.fire("input");
   assert.equal(settings.get("categories"), undefined, "category edits stay local until saved");
   await form.fire("submit");
   assert.equal(board.categoryDraft, null);
   assert.equal(settings.get("categories").at(-1).name, "Clinics <not markup>");
+  assert.equal(settings.get("categories").at(-1).prefix, "PU");
   assert.equal(legacy.getFlag(ID, "place").category, "community");
 
+  await findButton(board.root, en.pickStart).fire("click");
+  assert.equal(board.pickingOrigin, true);
   await findButton(board.root, en.addPlace).fire("click");
+  assert.equal(board.pickingOrigin, false, "adding a place cancels route-origin picking");
+  assert.ok(board.root.find(node => node.className === "nd-places-sidebar nd-editing"));
   form = board.root.querySelector("form");
   assert.equal(form.elements.namedItem("category").value, DEFAULT_CATEGORIES[0].id);
   const chooser = form.elements.namedItem("category");
@@ -832,6 +841,7 @@ test("GM categories stay drafts, preserve assignments and style filters, dossier
   assert.equal(categoryText.style["--nd-category"], "#aaff00");
   const marker = board.root.find(node => node.attributes["aria-label"] === entry.name);
   assert.equal(marker.style["--nd-category"], "#aaff00");
+  assert.equal(marker.textContent, "PU01");
   await findButton(board.root, en.share).fire("click");
 
   await findButton(board.root, en.manageCategories).fire("click");
@@ -934,4 +944,70 @@ test("example dossiers use configured categories when original defaults were rem
     game.journal.contents = journals;
     settings.delete("categories");
   }
+});
+
+test("fixed sidebars separate routes from three place sections and keep codes stable across filters and permissions", async () => {
+  game.user = { id: "gm", isGM: true };
+  settings.set("categories", [{ id: "public-services", name: "Public Services", color: "#aaff00", prefix: "PU" }]);
+  const a = await JournalEntry.create({ name: "Visible clinic", ownership: { default: 2 },
+    flags: { [ID]: { place: { ...EXAMPLES[0], title: "Visible clinic", category: "public-services", markerNumber: 3 } } } });
+  const b = await JournalEntry.create({ name: "Visible library", ownership: { default: 2 },
+    flags: { [ID]: { place: { ...EXAMPLES[1], title: "Visible library", category: "public-services", markerNumber: 98 } } } });
+  const secret = await JournalEntry.create({ name: "Private clinic", ownership: { default: 0 },
+    flags: { [ID]: { place: { ...EXAMPLES[2], title: "Private clinic", category: "public-services", markerNumber: 9 } } } });
+  game.user = { id: "player", isGM: false };
+  const board = newBoard();
+  board.mode = "av";
+  board.draw();
+  const left = () => board.root.find(node => node.className?.startsWith("nd-places-sidebar"));
+  const right = () => board.root.find(node => node.className === "nd-sidebar nd-route-sidebar");
+  assert.equal(left().children.length, 3);
+  assert.deepEqual(left().children.map(node => node.className), ["nd-dossier-section", "nd-district-section", "nd-places-section"]);
+  assert.ok(right());
+  assert.equal(right().attributes.hidden, undefined);
+  assert.equal(right().find(node => node.className === "nd-list"), null, "right route band has no place directory");
+  assert.equal(board.root.find(node => node.textContent === en.navigationPlaces), null, "no combined menu toggle remains");
+  const codeFor = name => left().children[2].find(node => node.textContent === name)?.attributes["data-index"];
+  assert.equal(codeFor(a.name), "PU03");
+  assert.equal(codeFor(b.name), "PU98");
+  assert.equal(codeFor(secret.name), undefined);
+  assert.equal(board.root.find(node => node.attributes["aria-label"] === a.name).textContent, "PU03");
+  const districtRow = left().children[1].find(node => node.attributes["data-index"] === "D-01");
+  assert.ok(districtRow);
+  assert.ok(board.root.find(node => node.attributes["aria-label"] === `${en.district}: ${districtRow.textContent}`));
+
+  await findButton(left().children[2], a.name).fire("click");
+  const origin = right().find(node => node.attributes["aria-label"] === en.start);
+  origin.value = b.id;
+  await origin.fire("change");
+  assert.equal(board.destination, a.id);
+  assert.ok(board.routeSummary);
+  assert.ok(left().children[0].find(node => node.tag === "h2" && node.textContent === a.name));
+  const initialRoute = board.routeSummary;
+  await findButton(left().children[1], districtRow.textContent).fire("click");
+  assert.equal(board.selected, null);
+  assert.equal(board.destination, a.id);
+  assert.equal(board.routeSummary, initialRoute, "district browsing does not erase the route target");
+  assert.equal(codeFor(b.name), "PU98", "all visible places stay in the directory while browsing a district");
+  const search = board.root.find(node => node.attributes.type === "search");
+  search.value = a.name;
+  await search.fire("input");
+  assert.equal(codeFor(a.name), "PU03");
+  assert.equal(codeFor(b.name), undefined);
+  search.value = "";
+  await search.fire("input");
+  assert.equal(codeFor(b.name), "PU98", "search never renumbers markers");
+  settings.set("categories", [{ id: "public-services", name: "Services", color: "#bb99ff", prefix: "PS" }]);
+  registered.get("categories").onChange();
+  assert.equal(codeFor(a.name), "PS03", "editing the prefix changes the label, not the number");
+  assert.equal(a.getFlag(ID, "place").markerNumber, 3);
+  a.ownership = { default: 0 };
+  hooks.get("updateJournalEntry")(a);
+  assert.equal(board.destination, null);
+  assert.equal(board.routeSummary, "");
+  assert.equal(codeFor(a.name), undefined);
+  game.user = { id: "gm", isGM: true };
+  await a.delete(); await b.delete(); await secret.delete();
+  await board.close();
+  settings.delete("categories");
 });

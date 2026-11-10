@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { ID, DEFAULT_MAP, DEFAULT_CATEGORIES, categoriesData, imagePath, placeData, noteText, readablePlaces, filterPlaces } from "../scripts/model.js";
+import { ID, DEFAULT_MAP, DEFAULT_CATEGORIES, categoriesData, markerCode, nextMarkerNumber, imagePath, placeData, noteText, readablePlaces, filterPlaces } from "../scripts/model.js";
 import { EXAMPLES } from "./fixtures.js";
 import { crc32, zipFiles, build } from "../tools/package.mjs";
 
@@ -49,7 +49,7 @@ test("custom categories preserve stable IDs and validate names, colors and dupli
   assert.deepEqual(categoriesData(DEFAULT_CATEGORIES), DEFAULT_CATEGORIES);
   const input = [{ id: "clinics", name: "  Kliniken / \u533b\u7642  ", color: "#AABB00", secret: "not public" }];
   const clean = categoriesData(input);
-  assert.deepEqual(clean, [{ id: "clinics", name: "Kliniken / \u533b\u7642", color: "#AABB00" }]);
+  assert.deepEqual(clean, [{ id: "clinics", name: "Kliniken / \u533b\u7642", color: "#AABB00", prefix: "CL" }]);
   clean[0].name = "Changed";
   assert.equal(input[0].name, "  Kliniken / \u533b\u7642  ");
   const category = { id: "clinics", name: "Clinics", color: "#62e5ee" };
@@ -64,6 +64,42 @@ test("custom categories preserve stable IDs and validate names, colors and dupli
   const places = readablePlaces([entry], {});
   assert.equal(places.length, 1, "custom and orphaned category IDs never hide existing dossiers");
   assert.equal(filterPlaces(places, "", "clinics").length, 1);
+});
+
+test("category prefixes are unique, normalized, editable and supplied for legacy definitions", () => {
+  const legacy = DEFAULT_CATEGORIES.map(({ prefix, ...category }) => category);
+  assert.deepEqual(categoriesData(legacy), DEFAULT_CATEGORIES);
+  const category = { id: "public", name: "Public Services", color: "#aabb00", prefix: " pu " };
+  const definitions = categoriesData([category]);
+  assert.equal(definitions[0].prefix, "PU");
+  assert.equal(markerCode({ category: "public", markerNumber: 3 }, definitions), "PU03");
+  assert.equal(markerCode({ category: "public", markerNumber: 99 }, definitions), "PU99");
+  assert.equal(markerCode({ category: "public" }, definitions), "PU??", "unmigrated dossiers are not assigned a made-up number");
+  for (const prefix of ["", "A B", "1A", "ABCDE", "<A>", null]) {
+    assert.throws(() => categoriesData([{ ...category, prefix }]));
+  }
+  assert.throws(() => categoriesData([category, { ...category, id: "other", prefix: "PU" }]));
+  const migrated = categoriesData([
+    { ...category, prefix: "CA" },
+    { id: "category-a", name: "A", color: "#aabb00" },
+    { id: "category-b", name: "B", color: "#aabb00" }
+  ]);
+  assert.deepEqual(migrated.map(item => item.prefix), ["CA", "CA1", "CA2"]);
+  assert.deepEqual(categoriesData(migrated), migrated, "migration is idempotent");
+});
+
+test("marker numbering preserves gaps until 99, fills free slots afterwards and enforces capacity", () => {
+  assert.equal(nextMarkerNumber([], 0), 1);
+  assert.equal(nextMarkerNumber([1, 3], 3), 4);
+  assert.equal(nextMarkerNumber([], 42), 43, "deleting all places does not reset the category history");
+  assert.equal(nextMarkerNumber([2, 99], 99), 1);
+  assert.equal(nextMarkerNumber([1, 2, 99], 99), 3);
+  assert.throws(() => nextMarkerNumber(Array.from({ length: 99 }, (_, index) => index + 1), 99), /categoryFull/);
+  for (const number of [0, -1, 100, 1.5, "1"]) {
+    if (number !== 0) assert.throws(() => nextMarkerNumber([], number));
+    assert.throws(() => placeData({ ...EXAMPLES[0], markerNumber: number }));
+  }
+  assert.equal(placeData({ ...EXAMPLES[0], markerNumber: 3 }).markerNumber, 3);
 });
 
 test("permission gate runs before reading flags and revocation removes cached dossiers", () => {

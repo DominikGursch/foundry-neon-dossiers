@@ -26,7 +26,9 @@ collapsible tool menu and a side-card editor. Journals remain the invisible
 storage and permission layer; illustrations remain local files.
 The independently authored red/black terminal layout has a
 compact header, color-coded category strip, large draggable map, numbered
-markers, collapsible navigation and floating right-hand dossier cards.
+markers, a permanent right route band and a left band split into dossier,
+districts and places, with independent scrolling in each third. GM editors
+temporarily use the entire left band.
 Compact rectangular dossier tags reinforce the RED terminal look. In the
 standalone board, a subtle monitor frame, static grain and scanlines do not
 intercept input, animate, distort map coordinates or cover the dossier/editor
@@ -107,7 +109,7 @@ The repository includes a static **GitHub Pages browser demo**, using the
 simulated canvas/Foundry adapter. It does not contain or require licensed Foundry
 server software. Fresh demos start on the community map **without dossiers**.
 Add your own places (or explicitly add optional starters), then share/revoke
-as GM and switch to Player. Toggle Deutsch/English. Open **Route / Places**, choose a starting POI
+as GM and switch to Player. Toggle Deutsch/English. In the fixed right **Route** band, choose a starting POI
 and a destination, or click **Set start on map**.
 Choose a district to open its card. The background canvas, panning and scene
 lifecycle are adapter simulations, not the licensed Foundry engine.
@@ -148,7 +150,8 @@ release. CI artifacts alone do not make the manifest's release URL live.
 
 ## Working with places
 
-**GM TOOLS > Manage categories** lets the GM add, rename and color categories.
+**GM TOOLS > Manage categories** lets the GM add, rename and color categories
+and set unique marker prefixes (1–4 uppercase letters/digits, starting with a letter).
 The four original categories are editable starting defaults, not a fixed list.
 Changes apply on **Save categories** and are shared with players in the world
 (stored locally in the browser demo). Names and colors are public metadata;
@@ -158,6 +161,22 @@ including private or retained legacy dossiers, uses it; reassign those dossiers
 first. At least one category must remain. Optional examples use the first
 configured category if their original category has been removed.
 The GM tool menu closes automatically after selecting an action.
+
+Place codes combine that prefix with a permanent per-category number:
+**Public Services**, prefix **PU**, produces **PU01**, **PU02**, etc.
+Changing a prefix updates every corresponding label without changing numbers.
+Searching, filtering, changing permissions or reloading never renumbers places.
+New places receive the next unused higher number; deleted numbers remain gaps
+until the category has reached **99**, then the lowest free number is reused.
+A category can contain at most 99 places, including private and retained legacy
+map dossiers. Moving a place to another category allocates a new number there.
+Only Foundry's active GM can allocate numbers; other GMs can still edit an
+already-numbered dossier without changing its category.
+Existing dossiers receive numbers automatically when the active GM opens the
+module. If a legacy category exceeds 99 places, a visible error asks the GM to
+reassign/delete places; the board stays usable for that repair. Unassigned
+numbers appear as `??` until migration succeeds. Counters survive deletion and
+failed writes can leave reserved gaps.
 
 **Add place** opens the editor with a centered marker position. Fill in a title,
 category and plain-text description. Click the map while editing, or set X/Y
@@ -188,7 +207,9 @@ Opening the module as GM, or clicking **Create / open map scene**, creates or up
 scene, sets the background, disables token vision and opens it **only for the GM**.
 Activate it through Foundry's scene navigation to bring players there.
 The HUD mounts on scene load and follows Foundry's pan/zoom transform.
-Click a numbered place once for its dossier card. **Route / Places** selects
+Click a coded place once for its dossier in the upper left third. The middle
+third lists districts with matching **D-01** map tags; the lower third lists
+visible places with their category-colored codes. The right **Route** band selects
 start, destination and travel mode; the personal route appears directly on
 the map. Walking is cyan, Bike green, driving blue, AV dashed violet.
 Directional pulses and a destination arrow show travel from the chosen start

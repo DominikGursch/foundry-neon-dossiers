@@ -3,15 +3,18 @@ export const COMMUNITY_MAP = `modules/${ID}/assets/night-city-community-unmarked
 export const DEFAULT_MAP = COMMUNITY_MAP;
 export const CATEGORIES = ["community", "commerce", "transit", "mystery"];
 export const DEFAULT_CATEGORIES = [
-  { id: "community", name: "", color: "#68e0ce" },
-  { id: "commerce", name: "", color: "#e4b46a" },
-  { id: "transit", name: "", color: "#7ab6ff" },
-  { id: "mystery", name: "", color: "#c998ff" }
+  { id: "community", name: "", color: "#68e0ce", prefix: "CO" },
+  { id: "commerce", name: "", color: "#e4b46a", prefix: "CM" },
+  { id: "transit", name: "", color: "#7ab6ff", prefix: "TR" },
+  { id: "mystery", name: "", color: "#c998ff", prefix: "MY" }
 ];
 
 export function categoriesData(input) {
   if (!Array.isArray(input) || !input.length) throw new Error("At least one category is required");
   const ids = new Set();
+  const reserved = new Set(input.filter(category => typeof category?.prefix === "string")
+    .map(category => category.prefix.trim().toUpperCase()));
+  const prefixes = new Set();
   return input.map(category => {
     if (!category || typeof category.id !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(category.id) || ids.has(category.id)) {
       throw new Error("Invalid or duplicate category ID");
@@ -19,7 +22,22 @@ export function categoriesData(input) {
     ids.add(category.id);
     const name = boundedText(category.name, 100, !CATEGORIES.includes(category.id));
     if (typeof category.color !== "string" || !/^#[0-9a-f]{6}$/i.test(category.color)) throw new Error("Invalid category color");
-    return { id: category.id, name, color: category.color };
+    let prefix = category.prefix;
+    if (prefix === undefined) {
+      prefix = DEFAULT_CATEGORIES.find(item => item.id === category.id)?.prefix ??
+        (category.id.replace(/[^a-z]/gi, "").slice(0, 2).toUpperCase() || "PO");
+      const base = prefix;
+      let suffix = 1;
+      while (reserved.has(prefix) || prefixes.has(prefix)) prefix = `${base}${suffix++}`;
+    } else {
+      if (typeof prefix !== "string") throw new Error("invalidCategoryPrefix");
+      prefix = prefix.trim().toUpperCase();
+    }
+    if (!/^[A-Z][A-Z0-9]{0,3}$/.test(prefix) || prefixes.has(prefix)) {
+      throw new Error("invalidCategoryPrefix");
+    }
+    prefixes.add(prefix);
+    return { id: category.id, name, color: category.color, prefix };
   });
 }
 
@@ -59,6 +77,10 @@ export function placeData(input) {
   }
   if (typeof category !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(category)) throw new Error("Invalid category");
   const optional = {};
+  if (input.markerNumber !== undefined) {
+    if (!Number.isInteger(input.markerNumber) || input.markerNumber < 1 || input.markerNumber > 99) throw new Error("invalidMarkerNumber");
+    optional.markerNumber = input.markerNumber;
+  }
   if (input.mapImage) optional.mapImage = imagePath(input.mapImage, false);
   for (const key of ["district", "roadNode"]) {
     if (input[key] !== undefined && input[key] !== "") {
@@ -87,6 +109,21 @@ export function placeData(input) {
     y,
     ...optional
   };
+}
+
+export function nextMarkerNumber(used, highWater = 0) {
+  if (!Number.isInteger(highWater) || highWater < 0 || highWater > 99) throw new Error("invalidMarkerNumber");
+  if (used.some(number => !Number.isInteger(number) || number < 1 || number > 99)) throw new Error("invalidMarkerNumber");
+  const occupied = new Set(used);
+  const highest = Math.max(highWater, 0, ...used);
+  if (highest < 99) return highest + 1;
+  for (let number = 1; number <= 99; number++) if (!occupied.has(number)) return number;
+  throw new Error("categoryFull");
+}
+
+export function markerCode(place, categories) {
+  const category = categories.find(category => category.id === place.category);
+  return `${category?.prefix ?? place.category.toUpperCase()}${place.markerNumber === undefined ? "??" : String(place.markerNumber).padStart(2, "0")}`;
 }
 
 export function noteText(value) {

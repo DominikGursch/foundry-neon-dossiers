@@ -94,19 +94,24 @@
 .neon-dossiers .nd-network-crossing { fill: none; stroke: #ff4655; stroke-width: 2; pointer-events: none; }
 .neon-dossiers .nd-origin { fill: #08090d; stroke: var(--nd-cyan); stroke-width: 7; r: 15; }
 .neon-dossiers .nd-markers { position: absolute; inset: 0; pointer-events: none; }
-.neon-dossiers .nd-marker { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; width: 18px; min-height: 14px; height: 14px; padding: 0; border: 1px solid var(--nd-category); border-left-width: 3px; color: #fff; background: #101118; font: 800 8px/12px ui-monospace, Consolas, monospace; border-radius: 0; box-shadow: 2px 2px 0 #08090dcc, inset 0 -2px 0 #ff465533; z-index: 1; }
+.neon-dossiers .nd-marker { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; width: auto; min-width: 36px; min-height: 18px; height: 18px; padding: 0 4px; white-space: nowrap; border: 1px solid var(--nd-category); border-left-width: 3px; color: #fff; background: #101118; font: 800 9px/16px ui-monospace, Consolas, monospace; border-radius: 0; box-shadow: 2px 2px 0 #08090dcc, inset 0 -2px 0 #ff465533; z-index: 1; }
+.neon-dossiers .nd-district-marker { --nd-category: #edff00; border-style: dashed; color: #edff00; }
 .neon-dossiers .nd-marker::before { content: ""; position: absolute; inset: -5px; }
 .neon-dossiers .nd-marker::after { content: attr(data-label); position: absolute; left: 50%; bottom: calc(100% + 7px); transform: translateX(-50%); background: #0c0d12; border: 1px solid var(--nd-category); padding: 3px 8px; color: #fff; white-space: nowrap; opacity: 0; pointer-events: none; font-size: 11px; }
 .neon-dossiers .nd-marker:is(:hover,:focus-visible,.nd-selected) { outline: 1px solid #fff; outline-offset: 2px; z-index: 3; background: #30151d; color: #fff; }
 .neon-dossiers .nd-marker:is(:hover,:focus-visible,.nd-selected)::after { opacity: 1; }
 .neon-dossiers .nd-dossier-draft { cursor: grab; touch-action: none; outline: 1px solid #fff; outline-offset: 2px; z-index: 4; }
 .neon-dossiers .nd-dossier-draft:active { cursor: grabbing; }
-.neon-dossiers .nd-sidebar, .neon-dossiers .nd-panel { position: absolute; z-index: 5; background: #0e0f15f5; border: 1px solid var(--nd-line); border-top: 2px solid var(--nd-red); box-shadow: 0 15px 40px #0008; overflow: auto; scrollbar-color: #663a45 #111217; }
-.neon-dossiers .nd-sidebar { left: 12px; top: 12px; bottom: 64px; width: 230px; padding: 14px; }
-.neon-dossiers .nd-panel { top: 12px; right: 12px; max-height: calc(100% - 24px); width: 312px; padding: 18px; }
+.neon-dossiers .nd-sidebar, .neon-dossiers .nd-places-sidebar { position: absolute; z-index: 5; background: #0e0f15f5; border: 1px solid var(--nd-line); border-top: 2px solid var(--nd-red); box-shadow: 0 15px 40px #0008; scrollbar-color: #663a45 #111217; }
+.neon-dossiers .nd-sidebar { right: 12px; top: 12px; bottom: 12px; width: clamp(140px, 20vw, 230px); padding: 14px; overflow: auto; }
+.neon-dossiers .nd-places-sidebar { left: 12px; top: 12px; bottom: 64px; width: clamp(150px, 25vw, 312px); display: grid; grid-template-rows: repeat(3, minmax(0, 1fr)); }
+.neon-dossiers .nd-places-sidebar > :is(div,section) { min-height: 0; min-width: 0; overflow: auto; overscroll-behavior: contain; }
+.neon-dossiers .nd-district-section, .neon-dossiers .nd-places-section { padding: 0 10px 10px; border-top: 1px solid var(--nd-line); }
+.neon-dossiers .nd-panel { height: 100%; padding: 12px; overflow: auto; overflow-wrap: anywhere; scrollbar-color: #663a45 #111217; }
+.neon-dossiers .nd-places-sidebar.nd-editing { grid-template-rows: minmax(0, 1fr); }
+.neon-dossiers .nd-editing > :is(.nd-district-section,.nd-places-section) { display: none; }
 .neon-dossiers .nd-panel h2 { padding-right: 24px; margin-top: 8px; }
 .neon-dossiers .nd-panel .nd-close-panel { float: right; padding: 2px 7px; font: 10px/1.5 ui-monospace, Consolas, monospace; min-height: 24px; color: var(--nd-muted); }
-.neon-dossiers .nd-welcome { width: 285px; }
 .neon-dossiers .nd-welcome h2 { color: var(--nd-red); }
 .neon-dossiers .nd-eyebrow { color: var(--nd-red); font: 700 9px/1.7 ui-monospace, Consolas, monospace; letter-spacing: 2px; }
 .neon-dossiers .nd-category { color: var(--nd-category); text-transform: uppercase; font: 10px ui-monospace, Consolas, monospace; letter-spacing: 1.5px; }
@@ -115,7 +120,8 @@
 .neon-dossiers .nd-map-cover span { position: absolute; left: 0; bottom: 0; width: 100%; padding: 6px; color: #fff; background: #0c0d12dd; font: 9px ui-monospace, Consolas, monospace; letter-spacing: 2px; }
 .neon-dossiers .nd-description { white-space: pre-wrap; overflow-wrap: anywhere; color: #d2d1da; line-height: 1.7; }
 .neon-dossiers .nd-panel > button { margin: 4px 5px 4px 0; }
-.neon-dossiers .nd-route-controls { display: flex; flex-direction: column; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--nd-line); }
+.neon-dossiers .nd-route-controls { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.neon-dossiers .nd-route-controls select { min-width: 0; }
 .neon-dossiers .nd-route-controls :is(select,label) { width: 100%; }
 .neon-dossiers .nd-route-controls label { display: flex; flex-direction: column; gap: 5px; color: var(--nd-muted); font-size: 11px; }
 .neon-dossiers .nd-route-summary { display: block; color: var(--nd-cyan); padding: 12px 8px; border-left: 2px solid var(--nd-cyan); background: #14232b; font: 700 13px/1.6 ui-monospace, Consolas, monospace; }
@@ -129,7 +135,9 @@
 .neon-dossiers .nd-threat-extreme { color: #ff8996; }
 .neon-dossiers .nd-list { display: flex; flex-direction: column; gap: 3px; }
 .neon-dossiers .nd-place-row { display: flex; align-items: center; gap: 9px; text-align: left; border: 0; border-bottom: 1px solid #272530; background: transparent; font-size: 12px; }
-.neon-dossiers .nd-place-row::before { content: attr(data-index); color: var(--nd-category); font: 700 11px ui-monospace, Consolas, monospace; }
+.neon-dossiers .nd-place-row::before { content: attr(data-index); flex: none; padding: 2px 4px; border: 1px solid var(--nd-category); border-left-width: 3px; background: #101118; color: var(--nd-category); font: 700 10px ui-monospace, Consolas, monospace; }
+.neon-dossiers .nd-district-row { --nd-category: #edff00; }
+.neon-dossiers .nd-district-row[aria-pressed="true"] { background: #edff001a; }
 .neon-dossiers .nd-place-row.nd-selected { background: #27212b; border-left: 2px solid var(--nd-category); }
 .neon-dossiers .nd-map-controls { position: absolute; left: 12px; bottom: 14px; z-index: 6; display: flex; align-items: center; background: #111217ee; border: 1px solid #51404b; }
 .neon-dossiers .nd-map-controls button { border: 0; background: transparent; min-width: 34px; font: 16px ui-monospace, Consolas, monospace; color: var(--nd-cyan); }
@@ -156,9 +164,11 @@
   .neon-dossiers .nd-connection { letter-spacing: 0; font-size: 8px; }
   .neon-dossiers .nd-tools { padding: 8px; }
   .neon-dossiers .nd-tools select { max-width: 170px; }
-  .neon-dossiers .nd-panel { width: min(290px, calc(100% - 24px)); }
-  .neon-dossiers .nd-sidebar-open .nd-panel { display: none; }
-  .neon-dossiers .nd-welcome { display: none; }
+  .neon-dossiers .nd-sidebar { right: 4px; padding: 8px; }
+  .neon-dossiers .nd-places-sidebar { left: 4px; }
+  .neon-dossiers .nd-panel { padding: 8px; }
+  .neon-dossiers .nd-panel h2 { font-size: 17px; }
+  .neon-dossiers .nd-place-row { flex-wrap: wrap; padding: 5px 2px; font-size: 11px; }
   .neon-dossiers .nd-statusbar { gap: 6px; padding: 4px 8px; font-size: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -170,7 +180,7 @@
   .neon-dossiers .nd-map-scroll::before, .neon-dossiers .nd-map-scroll::after { display: none; }
 }
 .nd-scene-hud { position: fixed; inset: 64px 320px 50px 110px; z-index: 30; pointer-events: none; color: var(--nd-ink); font: 13px/1.5 "Segoe UI", sans-serif; }
-.nd-scene-hud :is(.nd-heading,.nd-tools,.nd-categories,.nd-sidebar,.nd-panel,.nd-map-controls,.nd-statusbar) { pointer-events: auto; }
+.nd-scene-hud :is(.nd-heading,.nd-tools,.nd-categories,.nd-sidebar,.nd-places-sidebar,.nd-panel,.nd-map-controls,.nd-statusbar) { pointer-events: auto; }
 .nd-scene-hud :is(.nd-heading,.nd-tools,.nd-categories) { position: relative; z-index: 8; }
 .nd-scene-hud .nd-tools { z-index: 10; }
 .nd-scene-hud .nd-heading { padding: 6px 12px; }

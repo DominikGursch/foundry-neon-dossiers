@@ -88,7 +88,10 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
   Dossiers freigeben. Die Community-Karte hat keine aufgedruckten POI-Marker
   und keine schwarzen Seitenstreifen. Sie startet ohne interaktive POIs;
   mit **SL-WERKZEUGE > Ort hinzufügen** legt die Spielleitung eigene Orte an.
-- Einen nummerierten Marker anklicken: Rechts öffnet sich sein Dossier.
+- Einen Marker anklicken: Links oben öffnet sich sein Dossier.
+  Das linke Menüband zeigt in drei unabhängig scrollbaren Dritteln das
+  Dossier, alle Districts und die sichtbaren Orte mit ihren passenden Markern.
+  SL-Editoren nutzen vorübergehend das gesamte linke Menüband.
   Die Marker sind kompakte rechteckige Terminal-Tags. Die Kartenansicht
   bleibt über die Ränder der Bedienelemente hinweg sichtbar. Dezente Scanlines,
   leichtes Signalflackern und ein langsam wanderndes Scanband erzeugen einen
@@ -100,24 +103,37 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
   gegebenenfalls neu gezeichnet werden; **Abbrechen** erhält die alten Daten.
   Auch beim Anlegen oder Bearbeiten lässt sich die Karte durch Ziehen
   verschieben; ein einzelner Klick setzt den Marker.
-- Einen District auswählen: Rechts erscheinen Threat Level, Fraktionen und
+- Einen District auswählen: Links oben erscheinen Threat Level, Fraktionen und
   die für diese Ansicht sichtbaren POIs. Eine dezente neongelbe Fläche und
   ein gelb-schwarzer Rand mit laufenden Streifen im Absperrband-Stil zeigen den
   District. Bei reduzierter Bewegung bleibt der Rand statisch.
-- Unter **SL-WERKZEUGE > Kategorien verwalten** eigene Kategorien mit Namen
-  und Farben anlegen oder die vier Startkategorien ändern. Erst **Kategorien
+- Unter **SL-WERKZEUGE > Kategorien verwalten** eigene Kategorien mit Namen,
+  Farben und eindeutigen Kürzeln anlegen oder die vier Startkategorien ändern.
+  Ein Kürzel enthält 1–4 Buchstaben/Ziffern und beginnt mit einem Buchstaben.
+  Beispielsweise ergeben **Public Services** mit Kürzel **PU** die Kennungen
+  **PU01**, **PU02** usw. Erst **Kategorien
   speichern** übernimmt sie für Filter, Marker und Dossiers. Vor dem Löschen
   einer Kategorie alle zugehörigen Dossiers umsortieren; auch private Dossiers
   zählen. Mindestens eine Kategorie bleibt erhalten. Namen und Farben sind
   auch für Spieler sichtbar; die Dossierfreigaben bleiben unverändert.
   Nach dem Auswählen eines Werkzeugs klappt das SL-Menü automatisch ein.
+- Ortsnummern bleiben dauerhaft erhalten, auch bei Suche, Filtern und
+  Freigabeänderungen. Gelöschte Nummern bleiben Lücken, bis die Kategorie
+  **99** erreicht hat; danach werden freie Nummern wiederverwendet.
+  Maximal 99 Orte je Kategorie, einschließlich privater und alter Kartenorte.
+  Beim Kategorie-Wechsel erhält der Ort eine neue Nummer in der Zielkategorie.
+  Kürzeländerungen ändern die Beschriftung, nicht die Nummer.
+  Bestehende Dossiers werden automatisch nummeriert. Enthält eine alte Kategorie
+  mehr als 99 Orte, erscheint eine Fehlermeldung; die Oberfläche bleibt zum
+  Umsortieren oder Löschen bedienbar. Noch nicht vergebene Nummern erscheinen
+  als **??**. In Foundry vergibt nur die aktive SL neue Nummern.
 - Unter **Karte und Districts** Eckpunkte direkt ziehen, kleine Zwischenpunkte
   zum Einfügen anklicken und ausgewählte Ecken mit **Entf** oder **Eckpunkt löschen**
   entfernen. **Rückgängig / Wiederholen** korrigieren Änderungen.
   Beim Zeichnen setzt ein Klick eine Ecke; Ziehen verschiebt die Karte.
   Auf den ersten Punkt klicken oder **Grenze fertig** wählen, um die Form
   zu schließen. Erst **Konfiguration speichern** übernimmt die Änderungen.
-- **Route / Orte** öffnen, einen Startort und eine Fortbewegung auswählen
+- Im dauerhaft sichtbaren rechten Menüband **Route** einen Startort und eine Fortbewegung auswählen
   und anschließend einen Zielmarker anklicken oder das Ziel im Menü auswählen.
   Die Route wird direkt auf der simulierten Kartenszene dargestellt, ohne
   zusätzliches Journal- oder Modulfenster.
@@ -145,7 +161,7 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
   Ortszugänge müssen anschließend kontrolliert werden.
 - Auf **Spieler / Player** umschalten, um die eingeschränkte Ansicht zu sehen.
 - Den Kartenhintergrund ziehen, um ihn zu verschieben; mit dem Mausrad oder
-  unten links mit **+ / -** zoomen. Dossierkarten und SL-Editor liegen rechts
+  unten links mit **+ / -** zoomen. Dossierkarten und SL-Editor liegen links
   direkt über der Szene. In echtem Foundry gelten dessen Canvas-Steuerungen.
 
 Der SL-/Spielerwechsel ist nur eine lokale Simulation. Alle Demodaten liegen

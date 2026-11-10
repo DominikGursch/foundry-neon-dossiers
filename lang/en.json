@@ -43,7 +43,7 @@
     "communityMap": "Community · Night City 2045",
     "gmTools": "GM TOOLS", "closePanel": "Close", "credits": "Credits",
     "cityLink": "AGENT / CITYNET NAV", "welcomeTitle": "Night City. Your turf.",
-    "mapHelp": "Drag the map to pan. Use + / - to zoom. Dossiers, districts and places stay on the left; route controls stay on the right.",
+    "mapHelp": "Drag the map to pan. Districts and places are on the left; a district filters places by map position. Dossiers slide out alongside. Route controls, zoom and sources are on the right.",
     "mapControls": "City map: drag or use scrollbars and arrow keys to pan", "resetView": "Center",
     "noStarterData": "No starter places are provided for this custom map. Add your own dossiers.",
     "campaignDefaults": "Threat levels and scale are campaign defaults, not official ratings. Boundaries, POI anchors and the partial street network are approximate.",

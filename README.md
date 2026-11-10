@@ -26,9 +26,10 @@ collapsible tool menu and a side-card editor. Journals remain the invisible
 storage and permission layer; illustrations remain local files.
 The independently authored red/black terminal layout has a
 compact header, color-coded category strip, large draggable map, numbered
-markers, a permanent right route band and a left band split into dossier,
-districts and places, with independent scrolling in each third. GM editors
-temporarily use the entire left band.
+markers, full-height sidebands and a separate slide-out dossier. The left band
+uses its upper half for districts and lower half for places, independently
+scrollable. The right band includes routes, with zoom, counts and expandable
+sources aligned to its right edge at the bottom.
 Compact rectangular dossier tags reinforce the RED terminal look. In the
 standalone board, a subtle monitor frame, static grain and scanlines do not
 intercept input, animate, distort map coordinates or cover the dossier/editor
@@ -207,9 +208,17 @@ Opening the module as GM, or clicking **Create / open map scene**, creates or up
 scene, sets the background, disables token vision and opens it **only for the GM**.
 Activate it through Foundry's scene navigation to bring players there.
 The HUD mounts on scene load and follows Foundry's pan/zoom transform.
-Click a coded place once for its dossier in the upper left third. The middle
-third lists districts with matching **D-01** map tags; the lower third lists
-visible places with their category-colored codes. The right **Route** band selects
+Click a coded place or a district for its slide-out dossier alongside the left
+band. A short cyan-edged terminal reveal opens a readable card up to 420 px wide
+and 720 px tall, with its own scrolling; reduced-motion disables the animation.
+On narrower screens it overlaps the directory instead of squeezing the text.
+Closing it preserves the selected district filter. GM editors use this same
+drawer. District codes are directory-only, never drawn on the map. Selecting a
+district filters the place directory and map markers by polygon geometry
+(including boundary points), not stale dossier district assignments. Search
+and category filters further narrow those results; **All districts** clears the
+district filter without renumbering. Small place tags scale with map zoom.
+The right **Route** band selects
 start, destination and travel mode; the personal route appears directly on
 the map. Walking is cyan, Bike green, driving blue, AV dashed violet.
 Directional pulses and a destination arrow show travel from the chosen start

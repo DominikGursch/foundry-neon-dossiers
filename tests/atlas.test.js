@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { atlasData, emptyAtlas, findRoute, distance, ROAD_SNAP_KM } from "../scripts/atlas.js";
+import { atlasData, emptyAtlas, findRoute, distance, ROAD_SNAP_KM, withinDistrict } from "../scripts/atlas.js";
 import { DEFAULT_MAP } from "../scripts/model.js";
 import { EXAMPLES, DEFAULT_ATLAS } from "./fixtures.js";
 
@@ -16,6 +16,18 @@ const map = () => atlasData({
     { from: "c", to: "d", modes: ["walk", "bike", "car"] },
     { from: "a", to: "d", modes: ["walk"] }
   ]
+});
+
+test("district membership follows polygon coordinates, including edges and concave shapes", () => {
+  const district = { polygon: [{ x: .1, y: .1 }, { x: .9, y: .1 }, { x: .9, y: .4 },
+    { x: .4, y: .4 }, { x: .4, y: .9 }, { x: .1, y: .9 }] };
+  for (const point of [{ x: .2, y: .2 }, { x: .1, y: .5 }, { x: .9, y: .1 }, { x: .4, y: .7 }]) {
+    assert.equal(withinDistrict(point, district), true);
+  }
+  for (const point of [{ x: .6, y: .6 }, { x: 0, y: 0 }, { x: .95, y: .2 }]) {
+    assert.equal(withinDistrict(point, district), false);
+  }
+  assert.equal(withinDistrict({ x: .2, y: .2 }, { polygon: [...district.polygon, district.polygon[0]] }), true);
 });
 
 test("atlas round-trip, bounded schema and demo provenance", () => {

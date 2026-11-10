@@ -74,6 +74,20 @@ export function emptyAtlas(image) {
   return { image, width: 1000, height: 800, kmAcross: 10, nodes: [], edges: [], districts: [], transportVersion: 2 };
 }
 
+export function withinDistrict(position, district) {
+  let inside = false;
+  const polygon = district.polygon;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[j], b = polygon[i];
+    const cross = (position.x - a.x) * (b.y - a.y) - (position.y - a.y) * (b.x - a.x);
+    if (Math.abs(cross) < 1e-12 && position.x >= Math.min(a.x, b.x) && position.x <= Math.max(a.x, b.x) &&
+        position.y >= Math.min(a.y, b.y) && position.y <= Math.max(a.y, b.y)) return true;
+    if ((a.y > position.y) !== (b.y > position.y) &&
+        position.x < (b.x - a.x) * (position.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+  }
+  return inside;
+}
+
 export function distance(atlas, a, b) {
   return Math.hypot((a.x - b.x) * atlas.kmAcross, (a.y - b.y) * atlas.kmAcross * atlas.height / atlas.width);
 }

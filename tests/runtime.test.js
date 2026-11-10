@@ -157,7 +157,7 @@ test("district selection has a matching contrasting outline and credits stay ins
   assert.ok(active);
   assert.ok(halo);
   assert.equal(halo.attributes.points, active.attributes.points);
-  const footer = board.root.find(node => node.className === "nd-statusbar");
+  const footer = board.root.find(node => node.className === "nd-route-footer");
   const legal = footer.find(node => node.className === "nd-legal");
   const credit = footer.find(node => node.className === "nd-map-credit");
   assert.equal(legal.find(node => node === credit), credit);
@@ -582,6 +582,11 @@ test("scene HUD auto-mounts, follows the canvas, handles picks and drops revoked
   };
   hooks.get("canvasReady")();
   const board = await module.api.open({ placeId: b.id });
+  await findButton(board.root, en.closePanel).fire("click");
+  assert.equal(board.root.find(node => node.className?.startsWith("nd-dossier-drawer")).attributes.hidden, "");
+  await module.api.open({ placeId: b.id });
+  assert.equal(board.root.find(node => node.className?.startsWith("nd-dossier-drawer")).attributes.hidden, undefined,
+    "opening a core journal reopens a previously closed drawer");
   new (registered.get("open").type)().render(true);
   assert.equal(board.sceneMode, true);
   assert.equal(ticks.size, 1, "opening repeatedly does not add tickers");
@@ -825,7 +830,7 @@ test("GM categories stay drafts, preserve assignments and style filters, dossier
   assert.equal(board.pickingOrigin, true);
   await findButton(board.root, en.addPlace).fire("click");
   assert.equal(board.pickingOrigin, false, "adding a place cancels route-origin picking");
-  assert.ok(board.root.find(node => node.className === "nd-places-sidebar nd-editing"));
+  assert.ok(board.root.find(node => node.className?.startsWith("nd-dossier-drawer") && node.attributes.hidden === undefined));
   form = board.root.querySelector("form");
   assert.equal(form.elements.namedItem("category").value, DEFAULT_CATEGORIES[0].id);
   const chooser = form.elements.namedItem("category");
@@ -946,13 +951,18 @@ test("example dossiers use configured categories when original defaults were rem
   }
 });
 
-test("fixed sidebars separate routes from three place sections and keep codes stable across filters and permissions", async () => {
+test("full-height sidebands use a separate dossier drawer and filter places by district geometry without renumbering", async () => {
   game.user = { id: "gm", isGM: true };
+  const atlas = presetAtlas(DEFAULT_MAP);
+  const { x, y } = EXAMPLES[0];
+  atlas.districts[0].polygon = [{ x: x - .005, y: y - .005 }, { x: x + .005, y: y - .005 },
+    { x: x + .005, y: y + .005 }, { x: x - .005, y: y + .005 }];
+  settings.set("atlases", { [DEFAULT_MAP]: atlas });
   settings.set("categories", [{ id: "public-services", name: "Public Services", color: "#aaff00", prefix: "PU" }]);
   const a = await JournalEntry.create({ name: "Visible clinic", ownership: { default: 2 },
-    flags: { [ID]: { place: { ...EXAMPLES[0], title: "Visible clinic", category: "public-services", markerNumber: 3 } } } });
+    flags: { [ID]: { place: { ...EXAMPLES[0], district: "stale-district", title: "Visible clinic", category: "public-services", markerNumber: 3 } } } });
   const b = await JournalEntry.create({ name: "Visible library", ownership: { default: 2 },
-    flags: { [ID]: { place: { ...EXAMPLES[1], title: "Visible library", category: "public-services", markerNumber: 98 } } } });
+    flags: { [ID]: { place: { ...EXAMPLES[1], district: atlas.districts[0].id, title: "Visible library", category: "public-services", markerNumber: 98 } } } });
   const secret = await JournalEntry.create({ name: "Private clinic", ownership: { default: 0 },
     flags: { [ID]: { place: { ...EXAMPLES[2], title: "Private clinic", category: "public-services", markerNumber: 9 } } } });
   game.user = { id: "player", isGM: false };
@@ -961,34 +971,49 @@ test("fixed sidebars separate routes from three place sections and keep codes st
   board.draw();
   const left = () => board.root.find(node => node.className?.startsWith("nd-places-sidebar"));
   const right = () => board.root.find(node => node.className === "nd-sidebar nd-route-sidebar");
-  assert.equal(left().children.length, 3);
-  assert.deepEqual(left().children.map(node => node.className), ["nd-dossier-section", "nd-district-section", "nd-places-section"]);
+  const drawer = () => board.root.find(node => node.className?.startsWith("nd-dossier-drawer"));
+  assert.equal(left().children.length, 2);
+  assert.deepEqual(left().children.map(node => node.className), ["nd-district-section", "nd-places-section"]);
+  assert.equal(drawer().attributes.hidden, "");
   assert.ok(right());
   assert.equal(right().attributes.hidden, undefined);
   assert.equal(right().find(node => node.className === "nd-list"), null, "right route band has no place directory");
+  for (const className of ["nd-map-controls", "nd-statusbar", "nd-legal"]) {
+    assert.ok(right().find(node => node.className === className), `${className} belongs to the right band`);
+  }
   assert.equal(board.root.find(node => node.textContent === en.navigationPlaces), null, "no combined menu toggle remains");
-  const codeFor = name => left().children[2].find(node => node.textContent === name)?.attributes["data-index"];
+  const codeFor = name => left().children[1].find(node => node.textContent === name)?.attributes["data-index"];
   assert.equal(codeFor(a.name), "PU03");
   assert.equal(codeFor(b.name), "PU98");
   assert.equal(codeFor(secret.name), undefined);
   assert.equal(board.root.find(node => node.attributes["aria-label"] === a.name).textContent, "PU03");
-  const districtRow = left().children[1].find(node => node.attributes["data-index"] === "D-01");
+  const districtRow = left().children[0].find(node => node.attributes["data-index"] === "D-01");
   assert.ok(districtRow);
-  assert.ok(board.root.find(node => node.attributes["aria-label"] === `${en.district}: ${districtRow.textContent}`));
+  assert.equal(board.root.find(node => node.className?.includes("nd-district-marker")), null);
 
-  await findButton(left().children[2], a.name).fire("click");
+  await findButton(left().children[1], a.name).fire("click");
+  assert.equal(drawer().attributes.hidden, undefined);
+  assert.ok(drawer().className.includes("nd-opening"));
   const origin = right().find(node => node.attributes["aria-label"] === en.start);
   origin.value = b.id;
   await origin.fire("change");
   assert.equal(board.destination, a.id);
   assert.ok(board.routeSummary);
-  assert.ok(left().children[0].find(node => node.tag === "h2" && node.textContent === a.name));
+  assert.ok(drawer().find(node => node.tag === "h2" && node.textContent === a.name));
+  assert.equal(drawer().className.includes("nd-opening"), false, "route redraws do not restart the drawer animation");
   const initialRoute = board.routeSummary;
-  await findButton(left().children[1], districtRow.textContent).fire("click");
+  await findButton(left().children[0], districtRow.textContent).fire("click");
   assert.equal(board.selected, null);
   assert.equal(board.destination, a.id);
   assert.equal(board.routeSummary, initialRoute, "district browsing does not erase the route target");
-  assert.equal(codeFor(b.name), "PU98", "all visible places stay in the directory while browsing a district");
+  assert.equal(codeFor(a.name), "PU03", "coordinates determine membership despite stale district metadata");
+  assert.equal(codeFor(b.name), undefined, "a district assignment cannot include an outside marker");
+  await findButton(drawer(), en.closePanel).fire("click");
+  assert.equal(drawer().attributes.hidden, "");
+  assert.equal(board.district, atlas.districts[0].id, "closing the dossier preserves the district filter");
+  assert.equal(codeFor(b.name), undefined);
+  await findButton(left().children[0], en.allDistricts).fire("click");
+  assert.equal(codeFor(b.name), "PU98", "all districts restores the directory");
   const search = board.root.find(node => node.attributes.type === "search");
   search.value = a.name;
   await search.fire("input");
@@ -1010,4 +1035,5 @@ test("fixed sidebars separate routes from three place sections and keep codes st
   await a.delete(); await b.delete(); await secret.delete();
   await board.close();
   settings.delete("categories");
+  settings.delete("atlases");
 });

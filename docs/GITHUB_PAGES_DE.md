@@ -88,11 +88,15 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
   Dossiers freigeben. Die Community-Karte hat keine aufgedruckten POI-Marker
   und keine schwarzen Seitenstreifen. Sie startet ohne interaktive POIs;
   mit **SL-WERKZEUGE > Ort hinzufügen** legt die Spielleitung eigene Orte an.
-- Einen Marker anklicken: Links oben öffnet sich sein Dossier.
-  Das linke Menüband zeigt in drei unabhängig scrollbaren Dritteln das
-  Dossier, alle Districts und die sichtbaren Orte mit ihren passenden Markern.
-  SL-Editoren nutzen vorübergehend das gesamte linke Menüband.
-  Die Marker sind kompakte rechteckige Terminal-Tags. Die Kartenansicht
+- Einen Marker anklicken: Neben dem linken Menüband öffnet sich sein Dossier.
+  Das linke Menüband nutzt die gesamte verfügbare Kartenhöhe: oben die
+  Districts, unten die Orte, jeweils unabhängig scrollbar. Das Dossier fährt
+  daneben mit einer kurzen cyanfarbenen Terminal-Animation aus. Die Karte
+  bleibt bedienbar; das Dossier ist maximal 420 px breit und 720 px hoch
+  und bei längerem Inhalt scrollbar. Auf schmalen Bildschirmen überlagert es
+  die Liste statt den Text zu quetschen. SL-Editoren nutzen denselben Auszug.
+  Reduzierte Bewegung deaktiviert die Ausfahranimation.
+  Die kleinen rechteckigen Ortsmarker skalieren mit dem Kartenzoom. Die Kartenansicht
   bleibt über die Ränder der Bedienelemente hinweg sichtbar. Dezente Scanlines,
   leichtes Signalflackern und ein langsam wanderndes Scanband erzeugen einen
   Bildschirm-Look, ohne Karte oder Bedienelemente zu verschieben. Reduzierte
@@ -103,8 +107,14 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
   gegebenenfalls neu gezeichnet werden; **Abbrechen** erhält die alten Daten.
   Auch beim Anlegen oder Bearbeiten lässt sich die Karte durch Ziehen
   verschieben; ein einzelner Klick setzt den Marker.
-- Einen District auswählen: Links oben erscheinen Threat Level, Fraktionen und
-  die für diese Ansicht sichtbaren POIs. Eine dezente neongelbe Fläche und
+- Einen District auswählen: Im Dossier erscheinen Threat Level, Fraktionen und
+  die sichtbaren POIs im ausfahrenden Dossier. Die Ortsliste und Kartenmarker
+  werden auf Orte innerhalb des District-Polygons gefiltert, unabhängig von
+  einer möglicherweise veralteten District-Zuordnung im Dossier.
+  Suche und Kategorien schränken die Auswahl weiter ein. **Alle Districts**
+  hebt den District-Filter auf; das Schließen des Dossiers erhält ihn.
+  District-Kennungen stehen nur in der Liste, nicht auf der Karte.
+  Eine dezente neongelbe Fläche und
   ein gelb-schwarzer Rand mit laufenden Streifen im Absperrband-Stil zeigen den
   District. Bei reduzierter Bewegung bleibt der Rand statisch.
 - Unter **SL-WERKZEUGE > Kategorien verwalten** eigene Kategorien mit Namen,
@@ -161,7 +171,10 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
   Ortszugänge müssen anschließend kontrolliert werden.
 - Auf **Spieler / Player** umschalten, um die eingeschränkte Ansicht zu sehen.
 - Den Kartenhintergrund ziehen, um ihn zu verschieben; mit dem Mausrad oder
-  unten links mit **+ / -** zoomen. Dossierkarten und SL-Editor liegen links
+  im rechten Routenband mit **+ / -** zoomen. Dort liegen auch der
+  Orts-/District-Zähler und die aufklappbaren **Quellen**, alle rechtsbündig,
+  nicht mehr über
+  den Kartenrändern. Dossierkarten und SL-Editor liegen links
   direkt über der Szene. In echtem Foundry gelten dessen Canvas-Steuerungen.
 
 Der SL-/Spielerwechsel ist nur eine lokale Simulation. Alle Demodaten liegen

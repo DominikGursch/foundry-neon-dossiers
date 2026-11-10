@@ -43,7 +43,7 @@
     "communityMap": "Community · Night City 2045",
     "gmTools": "SL-WERKZEUGE", "closePanel": "Schließen", "credits": "Quellen",
     "cityLink": "AGENT / CITYNET NAV", "welcomeTitle": "Night City. Dein Revier.",
-    "mapHelp": "Karte zum Verschieben ziehen. Mit + / - zoomen. Dossiers, Districts und Orte bleiben links; die Routensteuerung bleibt rechts.",
+    "mapHelp": "Karte zum Verschieben ziehen. Districts und Orte stehen links; ein District filtert Orte nach ihren Kartenpositionen. Dossiers fahren seitlich aus. Route, Zoom und Quellen stehen rechts.",
     "mapControls": "Stadtkarte: zum Verschieben ziehen oder Bildlaufleisten und Pfeiltasten nutzen", "resetView": "Zentrieren",
     "noStarterData": "Für diese eigene Karte gibt es keine Startorte. Eigene Dossiers anlegen.",
     "campaignDefaults": "Threat Level und Maßstab sind Kampagnenvorgaben, keine offiziellen Einstufungen. Grenzen, POI-Anker und das unvollständige Straßennetz sind Näherungen.",

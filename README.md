@@ -30,8 +30,10 @@ markers, collapsible navigation and floating right-hand dossier cards.
 Compact rectangular dossier tags reinforce the RED terminal look. In the
 standalone board, a subtle monitor frame, static grain and scanlines do not
 intercept input, animate, distort map coordinates or cover the dossier/editor
-cards. The scene HUD leaves the map unobstructed; high-contrast display
-preferences disable the standalone monitor overlays.
+cards. The scene HUD adds faint scanlines, low-intensity signal flicker and a
+slow rolling scan band across the full canvas, without clipping at HUD edges or
+intercepting input. Reduced-motion preferences disable the scene screen effects
+and stop the district border animation; high-contrast preferences hide screen overlays.
 
 **Only included map:** Ced23Ric's Community Night City 2045 map, with
 17 district annotations and seven optional example dossiers. There is no map
@@ -270,7 +272,7 @@ and Ctrl/Cmd+Z (Shift to redo) restore shape edits. While drawing, click adds a
 corner and drag pans. Click the first corner or **Finish boundary** to close,
 with at least three corners. Redrawing requires confirmation and remains undoable.
 Saving applies the draft; cancelling preserves the original boundaries.
-Selected districts have a subtle neon-yellow fill and a static yellow/black
+Selected districts have a subtle neon-yellow fill and an animated yellow/black
 perimeter inspired by police barrier tape, distinct from the map's red zones.
 Set `kmAcross` to the campaign horizontal span. The cropped Community map defaults
 to approximately 12.54 km

@@ -59,7 +59,8 @@
 .neon-dossiers .nd-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .neon-dossiers .nd-district-zone { fill: transparent; stroke: transparent; }
 .neon-dossiers .nd-district-halo { fill: none; stroke: #080b0f; stroke-width: 8; vector-effect: non-scaling-stroke; }
-.neon-dossiers .nd-active-zone { fill: #edff00; fill-opacity: .1; stroke: #edff00; stroke-width: 5; stroke-dasharray: 12 8; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 3px #edff0077); }
+.neon-dossiers .nd-active-zone { fill: #edff00; fill-opacity: .1; stroke: #edff00; stroke-width: 5; stroke-dasharray: 12 8; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 3px #edff0077); animation: nd-barrier-flow 1.8s linear infinite; }
+@keyframes nd-barrier-flow { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -20; } }
 .neon-dossiers .nd-district-outline { stroke: #ffb0b7; stroke-width: 3; }
 .neon-dossiers .nd-district-cursor { stroke: #ffb0b7; stroke-dasharray: 6 6; stroke-opacity: .7; }
 .neon-dossiers .nd-district-midpoint { width: 10px; height: 10px; min-height: 10px; background: #ffb0b7; border: 2px solid #08090d; cursor: copy; }
@@ -162,9 +163,11 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .neon-dossiers *, .neon-dossiers *::before, .neon-dossiers *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  .neon-dossiers .nd-map-scroll::before, .neon-dossiers .nd-map-scroll::after { display: none; }
 }
 @media (prefers-contrast: more), (forced-colors: active) {
-  .neon-dossiers .nd-layout::before, .neon-dossiers .nd-layout::after { display: none; }
+  .neon-dossiers .nd-layout::before, .neon-dossiers .nd-layout::after,
+  .neon-dossiers .nd-map-scroll::before, .neon-dossiers .nd-map-scroll::after { display: none; }
 }
 .nd-scene-hud { position: fixed; inset: 64px 320px 50px 110px; z-index: 30; pointer-events: none; color: var(--nd-ink); font: 13px/1.5 "Segoe UI", sans-serif; }
 .nd-scene-hud :is(.nd-heading,.nd-tools,.nd-categories,.nd-sidebar,.nd-panel,.nd-map-controls,.nd-statusbar) { pointer-events: auto; }
@@ -179,6 +182,25 @@
 .nd-scene-hud .nd-statusbar > span, .nd-scene-hud .nd-legal > summary { background: #111217ee; border: 1px solid #47303c; padding: 4px 8px; }
 .nd-scene-hud .nd-legal { pointer-events: auto; }
 .nd-scene-hud .nd-map-scroll { position: fixed; inset: auto; display: block; overflow: hidden; pointer-events: none; }
+.nd-scene-hud .nd-map-scroll::before, .nd-scene-hud .nd-map-scroll::after { content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.nd-scene-hud .nd-map-scroll::before {
+  background: repeating-linear-gradient(0deg, #02080d33 0 1px, transparent 1px 4px),
+    repeating-radial-gradient(ellipse at 23% 37%, #c7f5ff1a 0 .5px, transparent .5px 3px);
+  background-size: auto, 7px 11px;
+  opacity: .38;
+  animation: nd-signal-flicker 9s linear infinite;
+}
+.nd-scene-hud .nd-map-scroll::after {
+  background: linear-gradient(transparent 35%, #82eaff08 48%, #c5f7ff14 50%, transparent 64%);
+  background-size: 100% 240%;
+  animation: nd-signal-roll 14s linear infinite;
+}
+@keyframes nd-signal-flicker {
+  0%, 42%, 46%, 72%, 78%, 100% { opacity: .38; }
+  44%, 74% { opacity: .55; }
+  45%, 76% { opacity: .28; }
+}
+@keyframes nd-signal-roll { from { background-position: 0 100%; } to { background-position: 0 0; } }
 .nd-scene-hud .nd-map { position: absolute; left: 0; top: 0; margin: 0; transform-origin: 0 0; }
 .nd-scene-hud :is(.nd-marker,.nd-road-node) { transform: translate(-50%, -50%) scale(var(--nd-inverse-scale, 1)); }
 .nd-scene-hud :is(.nd-route-line,.nd-road-guide) { vector-effect: non-scaling-stroke; stroke-width: 3; }

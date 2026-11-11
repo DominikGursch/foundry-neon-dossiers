@@ -7,7 +7,7 @@ authorized map image in Foundry's module settings.
 
 **Neon Dossiers is unofficial content provided under the Homebrew Content Policy of R. Talsorian Games and is not approved or endorsed by RTG. This content references materials that are the property of R. Talsorian Games and its licensees.**
 
-## City navigation: v0.4.0
+## City navigation: v0.4.1
 
 Browse a map you provide, search places, filter
 GM-defined categories and open dossiers from markers or the place list. GMs can create,
@@ -15,7 +15,8 @@ edit and delete places, select local dossier images, position markers by
 dragging them in the dossier editor, clicking the map or entering coordinates, and share or revoke
 dossier access. English and German interface translations are included.
 While editing, drag the map background to pan without moving the marker;
-click the background to place it.
+click the background to place it. Moving a place clears any previously drawn
+street access; after saving, draw a new access path if needed.
 
 The module overlays the **actual Foundry map scene**, not a separate dossier
 window. Numbered places open compact dossier cards directly over the map;
@@ -148,7 +149,7 @@ Opening the HTML via `file://` is not supported.
 
 To publish a Foundry-installable release, keep `package.json`, `module.json`
 version and the manifest/download URLs aligned, then push the matching tag
-(e.g. `v0.4.0`). The **Publish module release** workflow checks the version,
+(e.g. `v0.4.1`). The **Publish module release** workflow checks the version,
 runs tests, builds the ZIP and attaches the ZIP and `module.json` to that tag's
 release. CI artifacts alone do not make the manifest's release URL live.
 
@@ -409,7 +410,7 @@ npm run build
 npm run build:preview
 ```
 
-The builder creates `dist/neon-dossiers-0.4.0.zip` with `module.json` at the
+The builder creates `dist/neon-dossiers-0.4.1.zip` with `module.json` at the
 archive root and a standalone `dist/module.json`. Only runtime files and
 licensing/provenance notices, including `docs/ASSET_SOURCES.md`, are installed;
 tests, tools and other development docs

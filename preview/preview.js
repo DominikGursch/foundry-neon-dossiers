@@ -30,7 +30,15 @@ function journal(data) {
     testUserPermission(user) { return user.isGM || (this.ownership[user.id] ?? this.ownership.default) >= 2; },
     async update(changes) {
       for (const [key, value] of Object.entries(changes)) {
-        if (key.startsWith(`flags.${ID}.`)) this.flags[ID][key.slice(`flags.${ID}.`.length)] = structuredClone(value);
+        if (key.startsWith(`flags.${ID}.`)) {
+          const flag = key.slice(`flags.${ID}.`.length);
+          const current = this.flags[ID][flag] ?? {};
+          for (const [field, data] of Object.entries(value)) {
+            if (field.startsWith("-=")) delete current[field.slice(2)];
+            else current[field] = structuredClone(data);
+          }
+          this.flags[ID][flag] = current;
+        }
         else this[key] = structuredClone(value);
       }
       save(); fire("updateJournalEntry", this, changes); return this;

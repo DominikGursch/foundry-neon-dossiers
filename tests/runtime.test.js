@@ -125,7 +125,15 @@ globalThis.JournalEntry = {
       async update(change, options) {
         updates.push({ change, options });
         for (const [key, value] of Object.entries(change)) {
-          if (key.startsWith("flags.")) this.flags[ID][key.slice(`flags.${ID}.`.length)] = value;
+          if (key.startsWith("flags.")) {
+            const flag = key.slice(`flags.${ID}.`.length);
+            const current = this.flags[ID][flag] ?? {};
+            for (const [field, data] of Object.entries(value)) {
+              if (field.startsWith("-=")) delete current[field.slice(2)];
+              else current[field] = structuredClone(data);
+            }
+            this.flags[ID][flag] = current;
+          }
           else this[key] = structuredClone(value);
         }
         hooks.get("updateJournalEntry")?.(this, change);

@@ -13,7 +13,10 @@ function setup(places = [], counters = {}) {
     getFlag(namespace, key) { return this.flags[namespace][key]; },
     async update(changes) {
       if (changes.name) this.name = changes.name;
-      this.flags[ID].place = structuredClone(changes[`flags.${ID}.place`]);
+      for (const [key, value] of Object.entries(changes[`flags.${ID}.place`])) {
+        if (key.startsWith("-=")) delete this.flags[ID].place[key.slice(2)];
+        else this.flags[ID].place[key] = structuredClone(value);
+      }
       return this;
     }
   });
@@ -47,6 +50,22 @@ test("legacy migration assigns persistent numbers, keeps existing numbers and in
   game.journal.contents = game.journal.contents.filter((_, index) => index !== 1);
   const created = await createNumberedPlace({ ...EXAMPLES[0], category: "community" });
   assert.equal(created.getFlag(ID, "place").markerNumber, 6, "a deletion leaves a gap");
+});
+
+test("moving a place deletes stale access and preserves other flags under Foundry merge semantics", async () => {
+  const place = { ...EXAMPLES[0], markerNumber: 7, district: "old-district", roadNode: "road",
+    access: [{ x: EXAMPLES[0].x, y: EXAMPLES[0].y }, { x: 0.1, y: 0.2 }] };
+  setup([place]);
+  const entry = game.journal.contents[0];
+  const { district, roadNode, access, ...rest } = place;
+  await updateNumberedPlace(entry, { ...rest, x: 0.5, y: 0.5 });
+  assert.equal(entry.getFlag(ID, "place").access, undefined);
+  assert.equal(entry.getFlag(ID, "place").roadNode, undefined);
+  assert.equal(entry.getFlag(ID, "place").district, undefined);
+  assert.equal(entry.getFlag(ID, "place").markerNumber, 7);
+  assert.equal(entry.getFlag(ID, "note"), "Keep private notes");
+  await updateNumberedPlace(entry, { ...entry.getFlag(ID, "place"), description: "Second save" });
+  assert.equal(entry.getFlag(ID, "place").description, "Second save");
 });
 
 test("concurrent creations are serialized, counters survive deletion and holes are reused only after 99", async () => {

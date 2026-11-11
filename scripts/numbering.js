@@ -112,6 +112,10 @@ export function updateNumberedPlace(entry, input) {
       else markerNumber = await reserveNumber(place.category,
         storedPlaces().filter(record => record.entry.id !== entry.id).map(record => record.place), countersData());
     }
-    return entry.update({ name: place.title, [`flags.${ID}.place`]: { ...place, markerNumber } });
+    const updated = { ...place, markerNumber };
+    for (const key of ["district", "roadNode", "access", "mapImage"]) {
+      if (existing[key] !== undefined && updated[key] === undefined) updated[`-=${key}`] = null;
+    }
+    return entry.update({ name: place.title, [`flags.${ID}.place`]: updated });
   });
 }

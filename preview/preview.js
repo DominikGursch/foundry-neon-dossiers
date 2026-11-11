@@ -1,5 +1,4 @@
-import { ID, COMMUNITY_MAP } from "./modules/neon-dossiers/scripts/model.js";
-import { MAP_PRESETS } from "./modules/neon-dossiers/scripts/city.js";
+import { ID, DEFAULT_MAP } from "./modules/neon-dossiers/scripts/model.js";
 
 // Only this adapter is simulated. The actual module, renderer and routing code are shared.
 const storageKey = "neon-dossiers-preview-v2";
@@ -20,7 +19,7 @@ const save = () => {
     journals: game.journal.contents.map(({ id, name, ownership, flags }) => ({ id, name, ownership, flags }))
   }));
 };
-const settings = new Map([["mapImage", COMMUNITY_MAP]]);
+const settings = new Map([["mapImage", DEFAULT_MAP]]);
 const configs = new Map();
 
 function journal(data) {
@@ -104,14 +103,8 @@ Object.assign(globalThis, {
     browse() {
       const dialog = document.createElement("dialog");
       const help = document.createElement("p");
-      help.textContent = "Demo: bundled images only. Upload additional authorized maps through Foundry's file picker.";
+      help.textContent = "Demo: no images are bundled. Upload authorized images through Foundry's file picker.";
       dialog.append(help);
-      for (const preset of MAP_PRESETS) {
-        const choice = document.createElement("button");
-        choice.textContent = game.i18n.localize(`ND.${preset.label}`);
-        choice.addEventListener("click", () => { this.options.callback(preset.image); dialog.close(); });
-        dialog.append(choice);
-      }
       const cancel = document.createElement("button");
       cancel.textContent = "Cancel";
       cancel.addEventListener("click", () => dialog.close());

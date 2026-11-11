@@ -1,6 +1,6 @@
-import { ID, COMMUNITY_MAP, DEFAULT_CATEGORIES, categoriesData, markerCode, imagePath, placeData, noteText, readablePlaces, filterPlaces, placesOnMap, mapFamily } from "./model.js";
+import { ID, DEFAULT_MAP, DEFAULT_CATEGORIES, categoriesData, markerCode, imagePath, placeData, noteText, readablePlaces, filterPlaces, placesOnMap, mapFamily } from "./model.js";
 import { MODES, atlasData, findRoute, roadAccess, withinDistrict } from "./atlas.js";
-import { MAP_PRESETS, starterPlaces, ATLAS_SOURCE, presetAtlas } from "./city.js";
+import { MAP_PRESETS, starterPlaces, presetAtlas } from "./city.js";
 import { currentAtlas, synchronizeScene, migrateCommunityMap } from "./scene.js";
 import { sceneTransform, scenePoint } from "./canvas.js";
 import { inspectNetwork } from "./network.js";
@@ -74,7 +74,7 @@ function allPlaces() {
     invalidEntries.add(entry.id);
     console.error(`${ID}: invalid place ${entry.id}`, error);
     ui.notifications.warn(t("invalidPlace"));
-  }), COMMUNITY_MAP);
+  }), currentAtlas().image);
 }
 
 function privateNote(placeId) {
@@ -168,7 +168,6 @@ export class DossierBoard extends Application {
       };
     }
     this.renderedZoom = this.zoom;
-    const places = allPlaces();
     let atlas;
     let categoryDefinitions;
     try { atlas = currentAtlas(); }
@@ -177,6 +176,7 @@ export class DossierBoard extends Application {
       report(error);
       return;
     }
+    const places = allPlaces();
     try { categoryDefinitions = currentCategories(); }
     catch (error) {
       this.root.replaceChildren(element("p", { role: "alert", text: t("invalidCategories") }));
@@ -313,7 +313,7 @@ export class DossierBoard extends Application {
         this.pickingOrigin = false;
         this.editing = { title: "", category: categoryDefinitions[0].id, description: "", image: "", x: 0.5, y: 0.5 };
         this.draw();
-      }), gmAction(t("examples"), async () => {
+      }), ...(starterPlaces(atlas.image).length ? [gmAction(t("examples"), async () => {
         const examples = starterPlaces(atlas.image);
         if (!examples.length) throw new Error(t("noStarterData"));
         if (!await Dialog.confirm({ title: t("examples"), content: `<p>${t("confirmExamples")}</p>` })) return;
@@ -330,7 +330,7 @@ export class DossierBoard extends Application {
         }
         ui.notifications.info(t("examplesReady"));
         if (reassigned) ui.notifications.info(t("exampleCategoriesReassigned"));
-      }), gmAction(t("manageCategories"), () => {
+      })] : []), gmAction(t("manageCategories"), () => {
         this.editing = null;
         this.reviewing = false;
         this.roadDraft = null;
@@ -440,8 +440,8 @@ export class DossierBoard extends Application {
     zoom.children[2].setAttribute("aria-label", t("zoomOut"));
     this.zoomLabel = zoom.children[1];
     const preset = MAP_PRESETS.find(preset => preset.image === atlas.image);
-    const credits = element("a", { href: preset?.url ?? ATLAS_SOURCE, target: "_blank", rel: "noopener noreferrer",
-      text: preset?.credit ?? t("customMap"), class: "nd-map-credit" });
+    const credits = preset ? element("a", { href: preset.url, target: "_blank", rel: "noopener noreferrer",
+      text: preset.credit, class: "nd-map-credit" }) : element("p", { text: t("customMapCredit"), class: "nd-map-credit" });
     const legal = element("details", { class: "nd-legal" }, element("summary", { text: t("credits") }),
       element("div", { class: "nd-legal-content" }, credits, element("p", { text: t("disclaimer") })));
     sidebar.append(element("footer", { class: "nd-route-footer" }, zoom,
@@ -1354,7 +1354,7 @@ export class DossierBoard extends Application {
       try {
         requireGM();
         const data = atlasData(draft);
-        if (data.image !== COMMUNITY_MAP) throw new Error(t("mapMismatch"));
+        if (data.image !== currentAtlas().image) throw new Error(t("mapMismatch"));
         await game.settings.set(ID, "atlases", { ...game.settings.get(ID, "atlases"), [mapFamily(data.image)]: data });
         this.atlasDraft = null; this.districtEditing = ""; this.districtDrawing = false; this.configuring = false;
         this.draw();
@@ -1720,7 +1720,7 @@ export class SceneDossierBoard extends DossierBoard {
   }
 
   draw() {
-    if (canvas.scene.background.src !== COMMUNITY_MAP) {
+    if (canvas.scene.background.src !== currentAtlas().image) {
       this.dossierDragCleanup?.();
       this.districtDragCleanup?.();
       this.districtPreviewCleanup?.();
@@ -1808,11 +1808,11 @@ Hooks.once("init", () => {
     onChange: () => { for (const board of windows) board.refresh(); }
   });
   game.settings.register(ID, "mapImage", {
-    name: "ND.mapImage", hint: "ND.mapHint", scope: "world", config: false,
-    type: String, default: COMMUNITY_MAP,
+    name: "ND.mapImage", hint: "ND.mapHint", scope: "world", config: true, filePicker: "image",
+    type: String, default: DEFAULT_MAP,
     onChange: () => {
       for (const board of windows) {
-        board.origin = null; board.selected = null; board.district = ""; board.editing = null;
+        board.origin = null; board.selected = null; board.destination = null; board.district = ""; board.editing = null;
         board.roadDraft = null; board.tracingAccess = false;
         board.reviewing = false;
         board.configuring = false; board.viewport = null; board.resetViewport = true; board.refresh();

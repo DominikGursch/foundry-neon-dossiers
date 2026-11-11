@@ -33,10 +33,10 @@ test("preview revisions change with source content and consistently version the 
   }
 });
 
-test("preview rebuild removes stale map assets and ships only Community", async () => {
+test("preview rebuild removes stale map assets and ships only a blank background", async () => {
   const directory = "dist/preview/modules/neon-dossiers/assets";
   await mkdir(directory, { recursive: true });
   await writeFile(`${directory}/removed-test-map.svg`, "<svg/>");
   execFileSync(process.execPath, ["tools/preview.mjs"], { stdio: "pipe" });
-  assert.deepEqual(await readdir(directory), ["night-city-community-unmarked.webp"]);
+  assert.deepEqual(await readdir(directory), ["blank.svg"]);
 });

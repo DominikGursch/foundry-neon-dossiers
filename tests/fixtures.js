@@ -1,4 +1,4 @@
-import { DEFAULT_MAP } from "../scripts/model.js";
+import { COMMUNITY_MAP as DEFAULT_MAP } from "../scripts/model.js";
 import { atlasData, emptyAtlas } from "../scripts/atlas.js";
 
 export const EXAMPLES = [

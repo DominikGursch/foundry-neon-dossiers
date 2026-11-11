@@ -2,21 +2,20 @@
 
 An original, system-independent **places and dossiers** module for Foundry VTT.
 Unofficial compatibility with Cyberpunk RED; no rules or statblocks are
-included. The attributed Community Night City map is bundled as a third-party
-assets, not relicensed under the module's MIT license.
+included. No third-party map is included. Select your own locally hosted,
+authorized map image in Foundry's module settings.
 
 **Neon Dossiers is unofficial content provided under the Homebrew Content Policy of R. Talsorian Games and is not approved or endorsed by RTG. This content references materials that are the property of R. Talsorian Games and its licensees.**
 
 ## City navigation: v0.2.0
 
-Browse Night City on the supplied Community Night City 2045 map, search places, filter
+Browse a map you provide, search places, filter
 GM-defined categories and open dossiers from markers or the place list. GMs can create,
 edit and delete places, select local dossier images, position markers by
 dragging them in the dossier editor, clicking the map or entering coordinates, and share or revoke
 dossier access. English and German interface translations are included.
 While editing, drag the map background to pan without moving the marker;
 click the background to place it.
-Starter descriptions are in English.
 
 The module overlays the **actual Foundry map scene**, not a separate dossier
 window. Numbered places open compact dossier cards directly over the map;
@@ -38,29 +37,21 @@ slow rolling scan band across the full canvas, without clipping at HUD edges or
 intercepting input. Reduced-motion preferences disable the scene screen effects
 and stop the district border animation; high-contrast preferences hide screen overlays.
 
-**Only included map:** Ced23Ric's Community Night City 2045 map, with
-17 district annotations and seven optional example dossiers. There is no map
-selection or replacement picker. Atlas variants, Harbor Grid and their production
-data/assets have been removed from both the module and preview.
-On upgrade, the active GM removes other saved map configurations and automatically
-created examples belonging to those maps. Community configuration and dossiers
-are preserved. Manually created dossiers for removed maps are retained in storage
-but never reassigned to Community coordinates; untagged legacy dossiers remain
-visible for compatibility.
-The community image is the requested marker-free version, cropped to remove
-the black side panels. It starts without POIs; the GM can add dossiers manually.
-Example dossiers are optional and created only via **Add example dossiers**,
-after confirmation. They start private; existing examples are not duplicated.
-This image depicts an intact City Center rather than the later Atlas Hot Zone.
+**No map is bundled.** The blank background is a neutral placeholder, with
+no districts, places or roads. Upload a map you have permission to use through
+Foundry's file browser and select it under **Module Settings > Neon Dossiers >
+Custom map image**. Set its pixel dimensions and real-world width under
+**GM TOOLS > Map and districts**, then draw districts and roads as desired.
+The map must be a local relative path; remote URLs are not supported.
 
-**Threat levels, preset scales, boundaries and partial roads are campaign
-approximations**, not official ratings or complete street data. Sources,
-attributions and exact map modifications are recorded in
-[`docs/ASSET_SOURCES.md`](docs/ASSET_SOURCES.md). Copyright credits are also
-available under **Credits** beneath the map. Historical Atlas provenance is retained; credits
-removed from the community sidebars are reproduced in the shipped notices.
+An upgrade from the formerly bundled community image switches to the blank
+background. Stored dossiers, notes and map configurations are not deleted or
+automatically moved to a different image. Untagged legacy places are not shown
+on new maps. Coordinates, districts and roads must be recreated or explicitly
+restored for the selected image. You are responsible for rights and attribution
+for images you supply.
 
-**Target: Foundry VTT v12 only.** This prerelease uses core v12 Application,
+**Target: Foundry VTT v12 only.** This module uses core v12 Application,
 JournalEntry and ownership APIs. Unit tests and mocked lifecycle/UI checks are
 not real-engine certification: this release has **not been run in a licensed
 Foundry instance**. No `verified` compatibility claim is made. Other versions
@@ -80,6 +71,10 @@ download the source/release files into `Data/modules/neon-dossiers/` so that
 `module.json` is directly inside that directory, then restart Foundry.
 Enable **Neon Dossiers** in your world.
 
+Upload and select your own authorized image via **Game Settings > Configure
+Settings > Module Settings > Neon Dossiers > Custom map image**. The module
+starts with a blank 1000 × 800 placeholder until a map is selected.
+
 Open **Game Settings > Configure Settings > Module Settings > Neon Dossiers >
 Open Neon Dossiers**, use its map button under Journal Notes scene controls,
 press **Shift+M**, or run a script macro:
@@ -94,9 +89,8 @@ when the scene loads; players do not need a hotkey, journal directory or window.
 Opening the module from another scene as a player reports that the GM must
 activate the map; it does not force a scene switch.
 
-As GM, open **GM TOOLS > Add example dossiers** to optionally create seven
-private Community examples such as Afterlife.
-Select one and click **Share with all players** when ready. Each player opens
+As GM, create a dossier with **GM TOOLS > Add place** and click **Share with
+all players** when ready. Each player opens
 their dossier cards independently; selection and routes are not broadcast.
 
 ## Test directly from GitHub
@@ -108,14 +102,14 @@ GitHub displays the published URL. Pages hosts only the demo, not Foundry.
 The repository includes a static **GitHub Pages browser demo**, using the
 **same scene HUD, data validation and route engine**, with a small
 simulated canvas/Foundry adapter. It does not contain or require licensed Foundry
-server software. Fresh demos start on the community map **without dossiers**.
-Add your own places (or explicitly add optional starters), then share/revoke
+server software. Fresh demos start with a blank background and **without dossiers**.
+The browser demo cannot upload a custom map; use Foundry for local image selection.
+Add your own places, then share/revoke
 as GM and switch to Player. Toggle Deutsch/English. In the fixed right **Route** band, choose a starting POI
 and a destination, or click **Set start on map**.
 Choose a district to open its card. The background canvas, panning and scene
 lifecycle are adapter simulations, not the licensed Foundry engine.
-Starter POI anchors are **not verified street entrances**. For ground routes,
-trace their access paths first, or place new POIs directly on mapped streets.
+For ground routes, first draw streets and connect places to them.
 Old distant `roadNode` assignments no longer invent straight access lines.
 
 1. Push these changes to GitHub. Under **Settings > Pages > Build and deployment**,
@@ -129,8 +123,7 @@ Old distant `roadNode` assignments no longer invent straight access lines.
 The demo stores changes only in browser localStorage. It is not multiplayer;
 the role toggle is a UI simulation, **not an authorization boundary**. Do not
 enter secrets in a public demo or rely on it to verify Foundry's server-side
-permissions. Reset clears only this demo's saved data. Its file picker offers
-bundled sample images; actual uploads and individual ownership dialogs require
+permissions. Reset clears only this demo's saved data. Image uploads and individual ownership dialogs require
 Foundry. Blocking browser storage prevents startup and reports an error.
 
 For local use (Node.js 22+, no dependencies):
@@ -195,12 +188,11 @@ For hosted storage that only supplies absolute cloud URLs, copy an authorized
 image into local user-data storage instead; external storage URLs are not
 supported in this foundation.
 
-New dossiers are associated with Community coordinates.
-Legacy untagged dossiers remain visible for backward compatibility; edit and
-save them on the intended map to associate them with it.
-There is one Community world map, with one module-managed scene. Custom sockets,
+New dossiers are associated with the selected image. Tagged or untagged legacy
+dossiers remain stored but are not automatically placed on another map.
+There is one active world map, with one module-managed scene. Custom sockets,
 bulk dossier import/export and compendiums are not included.
-The Community configuration preserves customized scale, district and road settings.
+Each image retains its own customized scale, district and road settings.
 
 ## Foundry scene and player access
 
@@ -268,18 +260,8 @@ street segments or points. Outside that mode, select a dossier and choose
 leaves the stored dossier and its access path unchanged. A moved dossier's
 previous access path is removed when saved and may need to be traced again.
 
-**Community street survey:** `scripts/community-roads.js` records 696
-image-positioned junctions/bends and 995 segments. It expands Watson, the
-island street grid and City Center rings, the Glen, Westbrook, mainland
-Heywood, Rancho Coronado and Pacifica. The northern/southern bridges are
-explicit; Lake Park links are restricted to walking. Coordinates
-were inspected against image crops and street overlays; at-grade junction
-decisions are explicit, not inferred from every geometric crossing.
-This is **still not every visible alley or road**, and is not an automated
-image-recognition service. Morro Rock and Executive Zone interiors, many
-minor streets, access restrictions and official traffic directions remain
-unmapped. Bidirectional access and allowed modes are editable campaign
-assumptions, not facts extracted from road signs.
+New custom images begin with an empty street network. Draw the streets and
+access paths required by your campaign; no routes are inferred from the image.
 
 In the editor, **Check network** shows component counts for a chosen mode,
 amber endpoints and red crossings without a shared node. A crossing warning
@@ -287,12 +269,7 @@ is not proof of an error: overpasses must stay disconnected. Component
 counts ignore direction; try both travel directions when reviewing one-way
 roads.
 
-Existing saved street graphs are **not automatically replaced** by this
-expanded survey. In the editor, **Load current preset streets** requires
-confirmation and replaces only this family's
-street nodes/edges, not scale, districts, dossiers or other map families.
-Corrected street coordinates can invalidate previously traced POI access
-paths: check and retrace those after replacing a saved graph.
+Existing saved street graphs are not automatically transferred between images.
 
 Use **Map and districts** as GM to edit dimensions and scale with form fields
 and to create, edit or remove districts and draw their boundaries on the map.
@@ -304,15 +281,12 @@ with at least three corners. Redrawing requires confirmation and remains undoabl
 Saving applies the draft; cancelling preserves the original boundaries.
 Selected districts have a subtle neon-yellow fill and an animated yellow/black
 perimeter inspired by police barrier tape, distinct from the map's red zones.
-Set `kmAcross` to the campaign horizontal span. The cropped Community map defaults
-to approximately 12.54 km
-(the earlier full-image 18 km assumption adjusted for the crop); these are explicitly
-campaign assumptions, not official distances. The Atlas does not define fixed
-dimensions for Night City. All atlas fields are public; never put
+Set `kmAcross` to the campaign horizontal span; the default 10 km is an editable
+placeholder, not an official distance. All atlas fields are public; never put
 GM secrets in districts, road IDs or descriptions.
 
-Assign a district in each POI's editor; membership is explicit, not inferred
-from polygon overlap. District edits are saved for the selected map family.
+District filtering uses each place's position within the district polygon.
+District edits are saved for the selected map image.
 
 **Connecting a place:** a ground-route endpoint must lie within **20 metres**
 of a mode-compatible mapped street segment. It snaps to that segment, not a
@@ -324,7 +298,6 @@ first at the POI, last at that node). These are explicit GM-authored walking
 legs, not automatic obstacle detection. Moving the POI clears its traced
 access. A bare legacy `roadNode` is only usable within the same 20 m tolerance;
 more distant assignments now report missing access rather than invent a path.
-Existing off-road starter anchors need the same review.
 Auto/Bike endpoints on mapped pedestrian paths can now walk along that graph
 to a vehicle street, then travel by vehicle and walk the final approach.
 Amber legs are actual mapped paths (or explicitly traced access), included
@@ -397,15 +370,13 @@ are allowed with the MIT notice retained.
 The four former original SVG assets have been removed; their historical CC BY 4.0
 attribution remains in [`LICENSES/ASSETS.md`](LICENSES/ASSETS.md).
 No publisher fan-policy restrictions are added to the MIT software license.
-The sole remaining Community WebP map is **third-party artwork, not MIT or CC BY**. It is
-included following the repository owner's confirmed attribution-based use;
-that does not grant downstream users unrestricted reuse rights.
+No third-party map artwork is included. The user must verify permissions and
+attribution for any image they add.
 
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) records provenance and the
 license boundary. [`docs/ASSET_SOURCES.md`](docs/ASSET_SOURCES.md) explains the
 official DLC links and why free downloads are not redistribution licenses.
-The module bundles the documented map variants locally and makes no
-automatic third-party map requests at runtime.
+The module makes no automatic third-party map requests at runtime.
 
 ## Development and verification
 

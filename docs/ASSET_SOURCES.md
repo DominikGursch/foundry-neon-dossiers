@@ -1,7 +1,7 @@
 # Asset sources and modifications
 
-Source verification: **6 November 2026**. Inventory updated **8 November 2026**:
-only the Community map is now bundled in the module and demo. No map is hotlinked
+Source verification: **6 November 2026**. Inventory updated **11 November 2026**:
+no third-party map image is bundled in the module or demo. No map is hotlinked
 at runtime. Historical Atlas provenance is retained below. Credits and policy text removed
 from the community map's sidebars are reproduced here and in the installed
 `THIRD_PARTY_NOTICES.md`, as well as the map's visible source link.
@@ -28,7 +28,7 @@ were removed on 8 November 2026 at the user's request. Their historical
 conversion involved no cropping, repainting or rebranding. The PDF remains a
 reference for annotation facts, not a bundled asset.
 
-## Community map: included
+## Community map: historical reference, no longer bundled
 
 Post: **“Night City 2045 Map, cleaned and updated.”**, **u/Ced23Ric**:
 https://www.reddit.com/r/cyberpunkred/comments/z1744r/night_city_2045_map_cleaned_and_updated/
@@ -42,17 +42,17 @@ Attribution chain stated by the post and retained in the image:
   from the Cyberpunk RED core book, p. 296.
 - **R. Talsorian Games and CD Projekt Red** — underlying game IP and the
   publisher/game imagery in the original image's sidebars, removed from the
-  bundled crop.
+  former crop.
 
 The post links the author's marker-free JPG:
 https://www.ced23ric.de/cpr-pbp/CyberpunkRed_NightCity2045_full_map_rework_blind.jpg
 
-The author's host could not be reached during this session. The included file
+The author's host could not be reached during the earlier session. The former file
 was obtained from the **exact marker-free Reddit image selected by the user**:
 
 <https://preview.redd.it/night-city-2045-map-cleaned-and-updated-v0-jj4tfvo5l52a1.jpg?width=3615&format=pjpg&auto=webp&s=4620a4587b171a6b594a93a6f54a45bb6e4c4a7a>
 
-| Bundled file | Source dimensions | Modification |
+| Former file, now removed | Source dimensions | Modification |
 | --- | --- | --- |
 | `assets/night-city-community-unmarked.webp` | 3615 × 2408 | Cropped at x=549, y=0 to 2519 × 2408; no resize; encoded as WebP, quality 90 |
 
@@ -62,8 +62,8 @@ and scale bar remain; there are **no printed POI markers**. This exact image
 depicts an intact City Center, unlike the previously bundled Hot Zone variant.
 The community district card reflects this difference; its campaign threat
 rating is still editable and not an official historical claim.
-The old marked map is no longer bundled. The GM can add POIs manually;
-seven optional example dossiers are created only on explicit request.
+The map image is no longer bundled. The GM can add POIs manually to an
+authorized image they select.
 
 The removed source credit reads: **Overlay Map by J Gray · Detail Map by
 The Writer's Cthulhu · Layout by Ced Riggs**. Copyright © 2022 R. Talsorian
@@ -154,7 +154,7 @@ the source image does not establish traffic rules or access permissions.
 Morro Rock and Executive Zone interiors and many minor streets remain
 unmapped. The data are hand-positioned campaign approximations, **not an
 exhaustive street survey or a claim that every visible way was recognized**.
-The remaining Community image and preset district/POI coordinates are unchanged.
+The Community preset district/POI coordinates remain as historical data; the image is not shipped.
 Endpoints only snap within 20 m of a mapped path. Vehicle trips may follow
 the walking graph to/from a vehicle-compatible street; these walking legs
 are separately counted and marked in amber. Unmapped access paths must
@@ -179,6 +179,6 @@ The README, metadata and overview/district screenshots were consulted for the
 requested map-first layout: compact header, category strip, numbered markers
 and a right-hand dossier. No repository license was declared in the metadata
 when checked. No source code, map files, road masks, POI art, datasets or
-screenshots from that repository are bundled. Maps here were obtained from
-the original sources above. The red/black terminal UI is independently authored,
+screenshots from that repository are bundled. Historical map images were obtained
+from the original sources above and are no longer included. The red/black terminal UI is independently authored,
 not a pixel-identical clone or a claim of affiliation.

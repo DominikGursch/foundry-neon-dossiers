@@ -1,34 +1,21 @@
-import { ID, COMMUNITY_MAP, readablePlaces, placesOnMap, mapFamily } from "./model.js";
-import { atlasData } from "./atlas.js";
+import { ID, COMMUNITY_MAP, DEFAULT_MAP, imagePath, readablePlaces, placesOnMap, mapFamily } from "./model.js";
+import { atlasData, emptyAtlas } from "./atlas.js";
 import { presetAtlas } from "./city.js";
 
 export function currentAtlas() {
-  const image = COMMUNITY_MAP;
+  const image = imagePath(game.settings.get(ID, "mapImage") || DEFAULT_MAP, false);
   const stored = game.settings.get(ID, "atlases")?.[mapFamily(image)] ?? game.settings.get(ID, "atlas");
-  // Never reinterpret coordinates from a removed map as Community coordinates.
+  // Map geometry belongs only to the image it was configured for.
   return atlasData(stored && mapFamily(stored.image) === mapFamily(image)
-    ? { ...stored, image } : presetAtlas(image));
+    ? { ...stored, image } : presetAtlas(image) ?? emptyAtlas(image));
 }
 
 export async function migrateCommunityMap() {
   if (!game.user.isGM || (game.users?.activeGM && game.users.activeGM.id !== game.user.id)) return;
-  const atlases = game.settings.get(ID, "atlases") ?? {};
-  const legacy = game.settings.get(ID, "atlas");
-  const removed = Object.keys(atlases).some(image => image !== COMMUNITY_MAP) ||
-    (legacy?.image && legacy.image !== COMMUNITY_MAP) || game.settings.get(ID, "mapImage") !== COMMUNITY_MAP;
-  const community = atlases[COMMUNITY_MAP] ?? (legacy?.image === COMMUNITY_MAP ? legacy : null);
-  if (removed || (community && !atlases[COMMUNITY_MAP])) {
-    await game.settings.set(ID, "atlases", community ? { [COMMUNITY_MAP]: community } : {});
+  if (game.settings.get(ID, "mapImage") === COMMUNITY_MAP) {
+    await game.settings.set(ID, "mapImage", DEFAULT_MAP);
+    ui.notifications.info(game.i18n.localize("ND.mapRemoved"));
   }
-  if (legacy?.image) await game.settings.set(ID, "atlas", {});
-  if (game.settings.get(ID, "mapImage") !== COMMUNITY_MAP) await game.settings.set(ID, "mapImage", COMMUNITY_MAP);
-  const obsolete = game.journal.contents.filter(entry =>
-    entry.getFlag(ID, "example") != null && entry.getFlag(ID, "place")?.mapImage !== COMMUNITY_MAP);
-  for (const entry of obsolete) {
-    for (const note of game.journal.contents.filter(item => item.getFlag(ID, "noteFor") === entry.id)) await note.delete();
-    await entry.delete();
-  }
-  if (removed || obsolete.length) ui.notifications.info(game.i18n.localize("ND.communityOnlyMigrated"));
 }
 
 let pending = Promise.resolve();

@@ -78,16 +78,13 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
 
 ## 5. Die Demo ausprobieren
 
-- Demo und Modul enthalten ausschließlich **Community Night City 2045**;
-  die übrigen Karten und die Kartenauswahl sind entfernt.
-- Eine neue oder zurückgesetzte Demo startet auf der **Community-Karte ohne
-  Dossiers**. Community-Daten bleiben erhalten; alte Kartenkonfigurationen
-  und automatisch angelegte Beispiele anderer Karten werden entfernt.
-  Eigene Dossiers werden nicht auf eine andere Karte umgerechnet.
-  Optional **SL-WERKZEUGE > Beispieldossiers hinzufügen** bestätigen und die gewünschten
-  Dossiers freigeben. Die Community-Karte hat keine aufgedruckten POI-Marker
-  und keine schwarzen Seitenstreifen. Sie startet ohne interaktive POIs;
-  mit **SL-WERKZEUGE > Ort hinzufügen** legt die Spielleitung eigene Orte an.
+- Demo und Modul enthalten **keine Karte**. Die Demo startet mit einem neutralen
+  leeren Hintergrund ohne Dossiers, Districts oder Straßen. Mit **SL-WERKZEUGE >
+  Ort hinzufügen** legt die Spielleitung Orte an. Die Demo unterstützt keinen
+  Karten-Upload; in Foundry lässt sich ein eigenes lokales Bild in den
+  Moduleinstellungen auswählen. Bitte Nutzungsrechte selbst prüfen.
+- Beim Upgrade bleiben bisherige Dossiers und Kartenkonfigurationen gespeichert,
+  werden aber nicht automatisch auf ein anderes Bild übertragen.
 - Einen Marker anklicken: Neben dem linken Menüband öffnet sich sein Dossier.
   Das linke Menüband nutzt die gesamte verfügbare Kartenhöhe: oben die
   Districts, unten die Orte, jeweils unabhängig scrollbar. Das Dossier fährt
@@ -150,8 +147,8 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
   **Bike** bezeichnet ein Motorrad. Auto und Bike nutzen Fahrstraßen; liegt
   der Start auf einem Parkweg, wird ein gelber Fußweg bis zur Fahrstraße
   eingeplant. Bewegte Linienimpulse und ein Zielpfeil zeigen die Reiserichtung.
-- Bodenrouten benötigen erfasste Straßen und angebundene Orte. Beispielorte
-  sind keine geprüften Straßeneingänge: bei Bedarf im Dossiereditor **Zugang
+- Bodenrouten benötigen selbst erfasste Straßen und angebundene Orte. Bei
+  Bedarf im Dossiereditor **Zugang
   auf Karte zeichnen**, begehbare Wegpunkte setzen und mit einem roten
   Straßenknoten abschließen. Alternativ neue Orte direkt an erfasste Straßen
   setzen (maximal 20 m Einrastabstand). Freie Verbindungen quer über Wasser
@@ -163,12 +160,8 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
   Änderungen werden erst mit **Straßennetz speichern** übernommen.
   Dossiermarker sind währenddessen ausgeblendet und verdecken keine Straßenpunkte.
 - **Netz prüfen** zeigt verbundene Netzteile, Endpunkte und unverbundene
-  geometrische Kreuzungen. Das Community-Netz enthält 696 Knoten und 995 Abschnitte,
-  ist aber **keine vollständige Erfassung sämtlicher Straßen und Gassen**.
-- Bereits gespeicherte eigene Netze werden nicht automatisch ersetzt.
-  Zum Aktualisieren im Editor ausdrücklich **Aktuelles Vorlagen-Straßennetz
-  übernehmen** bestätigen und anschließend speichern. Nur die Straßen dieser Kartenfamilie werden ersetzt; bestehende
-  Ortszugänge müssen anschließend kontrolliert werden.
+  geometrische Kreuzungen. Neue Karten beginnen mit einem leeren Straßennetz.
+  Bereits gespeicherte Netze werden nicht automatisch auf andere Bilder übertragen.
 - Auf **Spieler / Player** umschalten, um die eingeschränkte Ansicht zu sehen.
 - Den Kartenhintergrund ziehen, um ihn zu verschieben; mit dem Mausrad oder
   im rechten Routenband mit **+ / -** zoomen. Dort liegen auch der

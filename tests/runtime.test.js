@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { ID, DEFAULT_MAP, COMMUNITY_MAP, DEFAULT_CATEGORIES } from "../scripts/model.js";
+import { ID, DEFAULT_MAP as BLANK_MAP, COMMUNITY_MAP, DEFAULT_CATEGORIES } from "../scripts/model.js";
 import { EXAMPLES, DEFAULT_ATLAS } from "./fixtures.js";
 import { presetAtlas } from "../scripts/city.js";
 
@@ -47,6 +47,7 @@ class Node {
 }
 
 const hooks = new Map();
+const DEFAULT_MAP = COMMUNITY_MAP;
 const settings = new Map([["mapImage", DEFAULT_MAP]]);
 const registered = new Map();
 const notifications = [];
@@ -166,10 +167,43 @@ test("district selection has a matching contrasting outline and credits stay ins
   await board.close();
 });
 
+test("blank and custom maps start empty without leaking places from another image", async () => {
+  const previous = settings.get("mapImage");
+  settings.set("mapImage", BLANK_MAP);
+  const board = newBoard();
+  board.draw();
+  assert.equal(board.root.find(node => node.textContent === en.examples), null);
+  assert.ok(board.root.find(node => node.className === "nd-map-credit" && node.textContent === en.customMapCredit));
+  const legacy = await JournalEntry.create({ name: "Former map", ownership: { default: 2 },
+    flags: { [ID]: { place: { ...EXAMPLES[0], title: "Former map" } } } });
+  board.draw();
+  assert.equal(contains(board.root, "Former map"), false);
+  const ownMap = "worlds/campaign/my-map.webp";
+  settings.set("mapImage", ownMap);
+  registered.get("mapImage")?.onChange();
+  board.draw();
+  assert.equal(contains(board.root, "Former map"), false);
+  await findButton(board.root, en.addPlace).fire("click");
+  const form = board.root.querySelector("form");
+  form.elements.namedItem("title").value = "My place";
+  await form.fire("submit");
+  const created = game.journal.get(board.selected);
+  assert.equal(created.getFlag(ID, "place").mapImage, ownMap);
+  assert.equal(contains(board.root, "My place"), true);
+  settings.set("mapImage", BLANK_MAP);
+  board.draw();
+  assert.equal(contains(board.root, "My place"), false);
+  assert.ok(game.journal.get(created.id), "switching maps preserves the underlying dossier");
+  await created.delete(); await legacy.delete(); await board.close();
+  settings.set("mapImage", previous);
+});
+
 test("v12 lifecycle, GM CRUD, sharing and player revocation with mocked DOM/core", async () => {
   hooks.get("init")();
   assert.equal(registered.get("mapImage").scope, "world");
-  assert.equal(registered.get("mapImage").default, COMMUNITY_MAP);
+  assert.equal(registered.get("mapImage").default, BLANK_MAP);
+  assert.equal(registered.get("mapImage").config, true);
+  assert.equal(registered.get("mapImage").filePicker, "image");
   assert.equal(registered.get("categories").scope, "world");
   assert.deepEqual(registered.get("categories").default, DEFAULT_CATEGORIES);
   assert.deepEqual(registered.get("atlas").default, {}, "unsaved presets must not shadow future road updates");

@@ -1,10 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ID, DEFAULT_MAP, COMMUNITY_MAP } from "../scripts/model.js";
+import { ID, DEFAULT_MAP as BLANK_MAP, COMMUNITY_MAP } from "../scripts/model.js";
 import { EXAMPLES, DEFAULT_ATLAS } from "./fixtures.js";
 import { COMMUNITY_EXAMPLES } from "../scripts/city.js";
 import { currentAtlas, synchronizeScene, migrateCommunityMap } from "../scripts/scene.js";
 
+const DEFAULT_MAP = COMMUNITY_MAP;
 test("scene lifecycle publishes only globally shared places and preserves unrelated notes", async () => {
   const settings = new Map([["mapImage", DEFAULT_MAP], ["atlas", structuredClone(DEFAULT_ATLAS)]]);
   const makeEntry = (id, ownership) => ({
@@ -81,7 +82,7 @@ test("scene lifecycle publishes only globally shared places and preserves unrela
   game.journal.contents.push(community);
   settings.set("mapImage", "worlds/old/map.webp");
   await synchronizeScene();
-  assert.deepEqual(scene.notes.contents.filter(note => note.entryId).map(note => note.entryId), ["community"]);
+  assert.deepEqual(scene.notes.contents.filter(note => note.entryId).map(note => note.entryId), ["shared"]);
   settings.set("mapImage", COMMUNITY_MAP);
   await synchronizeScene();
   assert.deepEqual(scene.notes.contents.filter(note => note.entryId).map(note => note.entryId), ["community"],
@@ -89,20 +90,20 @@ test("scene lifecycle publishes only globally shared places and preserves unrela
 
   settings.set("mapImage", "worlds/test/custom.webp");
   const replacement = currentAtlas();
-  assert.equal(replacement.image, COMMUNITY_MAP);
-  assert.deepEqual(replacement.nodes, DEFAULT_ATLAS.nodes, "Community configuration stays intact");
+  assert.equal(replacement.image, "worlds/test/custom.webp");
+  assert.deepEqual(replacement.nodes, [], "new map does not inherit old geography");
   await synchronizeScene();
-  assert.equal(scene.background.src, COMMUNITY_MAP);
+  assert.equal(scene.background.src, "worlds/test/custom.webp");
   game.user.isGM = false;
   await assert.rejects(synchronizeScene(true), /Only a GM/);
   game.user.isGM = true;
   assert.equal(await synchronizeScene(), scene, "a rejected request does not poison the sync queue");
 });
 
-test("Community-only migration removes obsolete configurations and automatic examples, never own dossiers", async () => {
+test("removed default migrates to blank without deleting settings or dossiers", async () => {
   const oldMap = "worlds/old/map.webp";
   const community = { ...structuredClone(DEFAULT_ATLAS), kmAcross: 19 };
-  const settings = new Map([["mapImage", oldMap], ["atlas", { ...community, image: oldMap }],
+  const settings = new Map([["mapImage", COMMUNITY_MAP], ["atlas", { ...community, image: oldMap }],
     ["atlases", { [COMMUNITY_MAP]: community, [oldMap]: { ...community, image: oldMap } }]]);
   const entries = [
     { id: "old-example", flags: { example: 0, place: { ...EXAMPLES[0], mapImage: oldMap } } },
@@ -119,17 +120,13 @@ test("Community-only migration removes obsolete configurations and automatic exa
     settings: { get: (_id, key) => settings.get(key), set: async (_id, key, value) => settings.set(key, value) }
   };
   await migrateCommunityMap();
-  assert.equal(settings.get("mapImage"), COMMUNITY_MAP);
-  assert.deepEqual(settings.get("atlases"), { [COMMUNITY_MAP]: community });
-  assert.deepEqual(settings.get("atlas"), {});
-  assert.deepEqual(game.journal.contents.map(item => item.id), ["own", "community"]);
+  assert.equal(settings.get("mapImage"), BLANK_MAP);
+  assert.deepEqual(settings.get("atlases"), { [COMMUNITY_MAP]: community, [oldMap]: { ...community, image: oldMap } });
+  assert.deepEqual(settings.get("atlas"), { ...community, image: oldMap });
+  assert.deepEqual(game.journal.contents.map(item => item.id), ["old-example", "old-notes", "own", "community"]);
   assert.equal(notices.length, 1);
   await migrateCommunityMap();
   assert.equal(notices.length, 1, "migration is idempotent");
-  settings.set("atlases", {});
-  settings.set("atlas", community);
-  await migrateCommunityMap();
-  assert.deepEqual(settings.get("atlases"), { [COMMUNITY_MAP]: community }, "legacy Community edits survive");
   game.user = { id: "player", isGM: false };
   settings.set("mapImage", oldMap);
   await migrateCommunityMap();

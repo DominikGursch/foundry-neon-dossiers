@@ -1,6 +1,6 @@
 export const ID = "neon-dossiers";
 export const COMMUNITY_MAP = `modules/${ID}/assets/night-city-community-unmarked.webp`;
-export const DEFAULT_MAP = COMMUNITY_MAP;
+export const DEFAULT_MAP = `modules/${ID}/assets/blank.svg`;
 export const CATEGORIES = ["community", "commerce", "transit", "mystery"];
 export const DEFAULT_CATEGORIES = [
   { id: "community", name: "", color: "#68e0ce", prefix: "CO" },
@@ -46,7 +46,7 @@ export function mapFamily(image) {
 }
 
 export function placesOnMap(places, image) {
-  return places.filter(place => !place.mapImage || mapFamily(place.mapImage) === mapFamily(image));
+  return places.filter(place => place.mapImage ? mapFamily(place.mapImage) === mapFamily(image) : image === COMMUNITY_MAP);
 }
 
 function boundedText(value, max, required = false) {

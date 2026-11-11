@@ -7,9 +7,9 @@
 | Module software, original short summaries, translations and documentation | MIT, see `LICENSE` | Does not license third-party artwork, trademarks or underlying game IP |
 | Four former original SVG assets (removed 8 November 2026) | CC BY 4.0, DominikGursch | Historical inventory and attribution in `LICENSES/ASSETS.md`; no longer shipped |
 | Two former Night City Atlas WebP variants (removed 8 November 2026) | Saga MacKenzie / © 2025 R. Talsorian Games | Historical provenance in `docs/ASSET_SOURCES.md`; no longer shipped |
-| Marker-free community Night City WebP map | Ced23Ric / Ced Riggs, Rodhlann, Writer's Cthulhu, J. Gray / R. Talsorian Games | Third-party map, not MIT or CC BY; sidebars cropped at the user's request; removed image credits transcribed below and in `docs/ASSET_SOURCES.md` |
+| Former marker-free community Night City WebP map (removed from release) | Ced23Ric / Ced Riggs, Rodhlann, Writer's Cthulhu, J. Gray / R. Talsorian Games | Historical third-party map, not MIT or CC BY; credits retained below and in `docs/ASSET_SOURCES.md` |
 | Foundry VTT | Its respective owners | Host application required; not included or relicensed |
-| Cyberpunk RED and related game IP | R. Talsorian Games and its licensees | Referenced by the module and included third-party maps; not relicensed |
+| Cyberpunk RED and related game IP | R. Talsorian Games and its licensees | Referenced by the module; not relicensed |
 
 The existing MIT license is preserved. Its copyright/license notice must
 accompany substantial copies of the software; MIT does not require an in-app
@@ -21,8 +21,8 @@ or the original CC BY artwork.
 The four SVG assets were drawn directly as original geometric SVG code for this
 project. They use generic shapes, system sans-serif fonts and an independent
 teal/amber palette. No external fonts, CDN, art packs or assets from other
-map modules are bundled. Only the marker-free Community WebP map remains shipped.
-It is separate third-party material. Historical Atlas credits are retained in
+map modules are bundled. No third-party map image is shipped.
+Historical Atlas credits are retained in
 the provenance record; Community image
 credits from its removed sidebars are reproduced in these shipped notices.
 The former Harbor Grid examples, graph and polygons are no longer shipped.

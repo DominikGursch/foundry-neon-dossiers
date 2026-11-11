@@ -113,6 +113,7 @@ test("removed map coordinates never leak onto Community; untagged legacy places 
   const removed = { ...COMMUNITY_EXAMPLES[0], mapImage: "worlds/old/map.webp" };
   const places = [...COMMUNITY_EXAMPLES, removed, legacy];
   assert.deepEqual(placesOnMap(places, COMMUNITY_MAP), [...COMMUNITY_EXAMPLES, legacy]);
+  assert.deepEqual(placesOnMap(places, "worlds/custom/map.webp"), [], "untagged legacy positions do not leak onto a new map");
   assert.throws(() => placeData({ ...COMMUNITY_EXAMPLES[0], mapImage: "https://example.com/map.webp" }));
 });
 
@@ -133,26 +134,28 @@ test("marker-free community crop transforms every coordinate without changing th
     (904 / 1600 - 549 / 3615) * 18) < 1e-12, "crop retains distance from the new western edge");
 });
 
-test("Community configurations survive while removed map selections and geometry are ignored", () => {
+test("custom maps use their own configuration and start without inherited geography", () => {
   const settings = new Map();
   globalThis.game = { settings: { get: (_id, name) => settings.get(name) } };
-  assert.equal(currentAtlas().image, COMMUNITY_MAP, "unconfigured worlds default to the marker-free community map");
+  assert.equal(currentAtlas().image, `modules/${ID}/assets/blank.svg`);
+  assert.deepEqual(currentAtlas().districts, []);
   settings.set("atlas", { ...presetAtlas(COMMUNITY_MAP), kmAcross: 9 });
   settings.set("mapImage", COMMUNITY_MAP);
   assert.equal(currentAtlas().kmAcross, 9, "legacy world settings are preserved");
   settings.set("mapImage", "worlds/old/map.webp");
-  assert.equal(currentAtlas().image, COMMUNITY_MAP);
+  assert.equal(currentAtlas().image, "worlds/old/map.webp");
+  assert.deepEqual(currentAtlas().nodes, []);
   settings.set("atlas", { ...presetAtlas(COMMUNITY_MAP), image: "worlds/old/map.webp", kmAcross: 12 });
-  assert.equal(currentAtlas().kmAcross, COMMUNITY_ATLAS.kmAcross, "old geography is not reused");
+  assert.equal(currentAtlas().kmAcross, 12);
   settings.set("atlases", {
     "worlds/old/map.webp": { ...presetAtlas(COMMUNITY_MAP), image: "worlds/old/map.webp", kmAcross: 14 },
     [COMMUNITY_MAP]: { ...presetAtlas(COMMUNITY_MAP), kmAcross: 21 }
   });
-  assert.equal(currentAtlas().image, COMMUNITY_MAP);
+  assert.equal(currentAtlas().kmAcross, 14);
   settings.set("mapImage", COMMUNITY_MAP);
   assert.equal(currentAtlas().kmAcross, 21);
   settings.set("mapImage", "worlds/test/new.webp");
-  assert.equal(currentAtlas().kmAcross, 21, "Community customization stays selected");
+  assert.equal(currentAtlas().kmAcross, 10, "new maps start with an empty atlas");
 });
 
 function webpDimensions(bytes) {
@@ -174,16 +177,8 @@ function webpDimensions(bytes) {
   assert.fail("WebP image dimensions missing");
 }
 
-test("bundled map dimensions match presets and every map is documented", async () => {
-  const sources = await readFile(new URL("../docs/ASSET_SOURCES.md", import.meta.url), "utf8");
-  for (const { image } of MAP_PRESETS) {
-    const file = image.replace(`modules/${ID}/`, "");
-    const bytes = await readFile(new URL(`../${file}`, import.meta.url));
-    const atlas = presetAtlas(image);
-    assert.deepEqual(webpDimensions(bytes), [atlas.width, atlas.height], file);
-    assert.ok(sources.includes(file), `missing attribution for ${file}`);
-  }
-  assert.match(sources, /Saga MacKenzie/);
-  assert.match(sources, /Ced23Ric/);
-  assert.match(sources, /preview\.redd\.it/);
+test("default background is an empty local placeholder", async () => {
+  const image = await readFile(new URL("../assets/blank.svg", import.meta.url), "utf8");
+  assert.match(image, /width="1000" height="800"/);
+  assert.match(image, /<rect/);
 });

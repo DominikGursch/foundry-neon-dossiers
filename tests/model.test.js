@@ -159,7 +159,7 @@ test("ZIP CRC and structure are deterministic and package excludes development f
   assert.ok(packed.some(([name]) => name === "LICENSES/ASSETS.md"));
   assert.ok(packed.some(([name]) => name === "docs/ASSET_SOURCES.md"));
   assert.deepEqual(packed.filter(([name]) => name.startsWith("assets/")).map(([name]) => name),
-    ["assets/night-city-community-unmarked.webp"], "only the requested Community map is shipped");
+    ["assets/blank.svg"], "no third-party map is shipped");
   assert.ok(packed.every(([name]) => !/^(tests|tools|\.git|README)/.test(name)));
   const zip = await readFile(output);
   let offset = 0;

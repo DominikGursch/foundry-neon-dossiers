@@ -7,7 +7,7 @@ authorized map image in Foundry's module settings.
 
 **Neon Dossiers is unofficial content provided under the Homebrew Content Policy of R. Talsorian Games and is not approved or endorsed by RTG. This content references materials that are the property of R. Talsorian Games and its licensees.**
 
-## City navigation: v0.3.0
+## City navigation: v0.4.0
 
 Browse a map you provide, search places, filter
 GM-defined categories and open dossiers from markers or the place list. GMs can create,
@@ -148,7 +148,7 @@ Opening the HTML via `file://` is not supported.
 
 To publish a Foundry-installable release, keep `package.json`, `module.json`
 version and the manifest/download URLs aligned, then push the matching tag
-(e.g. `v0.3.0`). The **Publish module release** workflow checks the version,
+(e.g. `v0.4.0`). The **Publish module release** workflow checks the version,
 runs tests, builds the ZIP and attaches the ZIP and `module.json` to that tag's
 release. CI artifacts alone do not make the manifest's release URL live.
 
@@ -355,6 +355,17 @@ Permission/document hooks re-check access and discard rendered dossier content.
 An external document/user update also closes an unsaved editor to avoid showing
 stale access; save your work before changing ownership elsewhere.
 
+The active GM automatically organizes existing and new module dossiers into
+two journal folders, **Neon Dossiers - Private** and **Neon Dossiers - Shared**.
+Any player grant, including Limited or an individual grant, places a dossier
+in the shared folder; GM-only grants remain private. Switching permissions
+moves the dossier automatically while an active GM is online. The folders are
+created on world startup and identified by module flags, so renaming them is safe.
+Other journals and separate GM-note documents are not moved. On world startup,
+module dossiers are reorganized even if they were manually moved elsewhere.
+Folders do not grant or revoke permissions; Foundry document ownership remains
+the authority.
+
 **Private GM notes live in separate GM-only JournalEntry documents**, never in
 public place flags, world settings or custom socket payloads. These private
 documents are named `Private GM notes (place-id)` (localized). Do not manually
@@ -398,7 +409,7 @@ npm run build
 npm run build:preview
 ```
 
-The builder creates `dist/neon-dossiers-0.3.0.zip` with `module.json` at the
+The builder creates `dist/neon-dossiers-0.4.0.zip` with `module.json` at the
 archive root and a standalone `dist/module.json`. Only runtime files and
 licensing/provenance notices, including `docs/ASSET_SOURCES.md`, are installed;
 tests, tools and other development docs

@@ -79,7 +79,7 @@ globalThis.Hooks = {
   on: (name, action) => hooks.set(name, action),
   once: (name, action) => hooks.set(name, action)
 };
-globalThis.CONST = { DOCUMENT_OWNERSHIP_LEVELS: { OBSERVER: 2 } };
+globalThis.CONST = { DOCUMENT_OWNERSHIP_LEVELS: { LIMITED: 1, OBSERVER: 2 } };
 globalThis.ui = { notifications: Object.fromEntries(["error", "warn", "info"].map(key =>
   [key, message => notifications.push([key, message])])) };
 const module = {};
@@ -94,8 +94,15 @@ globalThis.game = {
     get: (_id, name) => settings.get(name),
     set: async (_id, name, value) => settings.set(name, value)
   },
-  journal: { contents: [], get(id) { return this.contents.find(entry => entry.id === id); } }
+  journal: { contents: [], get(id) { return this.contents.find(entry => entry.id === id); } },
+  folders: { contents: [] }
 };
+globalThis.Folder = { async create(data) {
+  const folder = { ...structuredClone(data), id: `folder-${game.folders.contents.length + 1}`,
+    getFlag(namespace, key) { return this.flags?.[namespace]?.[key]; } };
+  game.folders.contents.push(folder);
+  return folder;
+} };
 globalThis.FormData = class {
   constructor(form) {
     this.values = [];
@@ -121,7 +128,7 @@ globalThis.JournalEntry = {
           if (key.startsWith("flags.")) this.flags[ID][key.slice(`flags.${ID}.`.length)] = value;
           else this[key] = structuredClone(value);
         }
-        hooks.get("updateJournalEntry")?.(this);
+        hooks.get("updateJournalEntry")?.(this, change);
         return this;
       },
       async setFlag(namespace, key, value) {
@@ -142,6 +149,7 @@ globalThis.Dialog = { confirm: async () => true };
 globalThis.DocumentOwnershipConfig = class extends Application {};
 
 const { DossierBoard, SceneDossierBoard } = await import("../scripts/module.js");
+const { organizeDossiers } = await import("../scripts/folders.js");
 const newBoard = () => {
   const board = new DossierBoard();
   board.root = new Node("div");
@@ -270,7 +278,7 @@ test("v12 lifecycle, GM CRUD, sharing and player revocation with mocked DOM/core
 
   await findButton(gm.root, en.share).fire("click");
   assert.deepEqual(place.ownership, { default: 2 });
-  assert.equal(updates.at(-1).options.recursive, false);
+  assert.equal(updates.findLast(item => item.change.ownership)?.options.recursive, false);
 
   game.user = { id: "player", isGM: false };
   const player = newBoard();
@@ -302,6 +310,34 @@ test("v12 lifecycle, GM CRUD, sharing and player revocation with mocked DOM/core
 
   await gm.close();
   await player.close();
+});
+
+test("journal hooks organize shared and private dossiers without closing an open editor", async () => {
+  game.user = { id: "gm", isGM: true };
+  const entry = await JournalEntry.create({ name: "Folder test", ownership: { default: 0 },
+    flags: { [ID]: { place: EXAMPLES[0] } } });
+  await organizeDossiers();
+  const kind = () => game.folders.contents.find(folder => folder.id === entry.folder)?.getFlag(ID, "dossierFolder");
+  assert.equal(kind(), "private");
+  await entry.update({ ownership: { default: 2 } });
+  await organizeDossiers();
+  assert.equal(kind(), "shared");
+  await entry.update({ ownership: { default: 0, player: 2 } });
+  await organizeDossiers();
+  assert.equal(kind(), "shared");
+  await entry.update({ ownership: { default: 0 } });
+  await organizeDossiers();
+  assert.equal(kind(), "private");
+  const board = newBoard();
+  board.selected = entry.id;
+  board.draw();
+  await findButton(board.root, en.edit).fire("click");
+  entry.folder = null;
+  await organizeDossiers(entry.id);
+  assert.ok(board.editing, "moving a folder does not discard an unsaved editor");
+  await board.close();
+  await entry.delete();
+  await organizeDossiers();
 });
 
 test("GM note updates replace grants; a failed note save keeps the form and does not duplicate places", async () => {

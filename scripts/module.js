@@ -6,6 +6,7 @@ import { sceneTransform, scenePoint, fitSceneView } from "./canvas.js";
 import { inspectNetwork } from "./network.js";
 import { RoadDraft } from "./road-draft.js";
 import { migratePlaceNumbers, createNumberedPlace, updateNumberedPlace } from "./numbering.js";
+import { organizeDossiers } from "./folders.js";
 
 const t = key => game.i18n.localize(`ND.${key}`);
 const windows = new Set();
@@ -1895,7 +1896,9 @@ Hooks.on("getSceneControlButtons", controls => {
 });
 
 for (const hook of ["createJournalEntry", "updateJournalEntry", "deleteJournalEntry", "updateUser"]) {
-  Hooks.on(hook, () => {
+  Hooks.on(hook, (entry, changes) => {
+    if (hook === "updateJournalEntry" && changes && Object.keys(changes).length &&
+        Object.keys(changes).every(key => key === "_id" || key === "folder")) return;
     for (const board of windows) {
       if (board.saving) continue;
       // Never retain an edit form or private notes across ownership/user changes.
@@ -1911,8 +1914,17 @@ for (const hook of ["createJournalEntry", "updateJournalEntry", "deleteJournalEn
       board.refresh();
     }
     syncIfGM();
+    if (hook === "updateUser") organizeDossiers().catch(report);
+    if (hook === "createJournalEntry" && entry?.getFlag(ID, "place")) organizeDossiers(entry.id).catch(report);
+    if (hook === "updateJournalEntry" && entry?.getFlag(ID, "place") &&
+        (Object.hasOwn(changes ?? {}, "ownership") || Object.keys(changes ?? {}).some(key => key.startsWith("ownership.")))) {
+      organizeDossiers(entry.id).catch(report);
+    }
   });
 }
+Hooks.on("deleteFolder", folder => {
+  if (folder.getFlag(ID, "dossierFolder")) organizeDossiers().catch(report);
+});
 
 function syncIfGM() {
   if (game.user.isGM && (!game.users?.activeGM || game.users.activeGM.id === game.user.id)) {
@@ -1921,7 +1933,7 @@ function syncIfGM() {
 }
 
 Hooks.once("ready", async () => {
-  try { await migrateCommunityMap(); await migratePlaceNumbers().catch(report); syncIfGM(); mountSceneBoard(); }
+  try { await migrateCommunityMap(); await migratePlaceNumbers().catch(report); await organizeDossiers().catch(report); syncIfGM(); mountSceneBoard(); }
   catch (error) { report(error); }
 });
 Hooks.on("canvasReady", () => {

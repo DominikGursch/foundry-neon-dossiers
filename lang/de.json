@@ -39,6 +39,7 @@
     "invalidPlace": "Ein ungültiges Dossier wurde übersprungen. Details stehen in der Konsole.",
     "imageError": "Ein lokales Dossier- oder Kartenbild konnte nicht geladen werden. Pfad und Dateizugriff prüfen.",
     "gmNotes": "Private SL-Notizen", "shared": "Standardzugriff: alle Spieler dürfen lesen.",
+    "privateFolder": "Neon Dossiers - Privat", "sharedFolder": "Neon Dossiers - Freigegeben",
     "private": "Standardzugriff: privat. Einzelne Freigaben sind möglich; Berechtigungen prüfen.",
     "share": "Für alle Spieler freigeben", "unshare": "Privat machen (alle Spielerfreigaben entfernen)",
     "permissions": "Berechtigungen", "edit": "Dossier bearbeiten", "delete": "Dossier löschen",

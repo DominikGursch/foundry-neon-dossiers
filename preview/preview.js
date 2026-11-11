@@ -16,7 +16,8 @@ const fire = (name, ...args) => Promise.all((hooks.get(name) ?? []).map(action =
 const save = () => {
   localStorage.setItem(storageKey, JSON.stringify({
     settings: Object.fromEntries(settings),
-    journals: game.journal.contents.map(({ id, name, ownership, flags }) => ({ id, name, ownership, flags }))
+    journals: game.journal.contents.map(({ id, name, ownership, flags, folder }) => ({ id, name, ownership, flags, folder })),
+    folders: game.folders.contents.map(({ id, name, type, flags }) => ({ id, name, type, flags }))
   }));
 };
 const settings = new Map([["mapImage", DEFAULT_MAP]]);
@@ -32,7 +33,7 @@ function journal(data) {
         if (key.startsWith(`flags.${ID}.`)) this.flags[ID][key.slice(`flags.${ID}.`.length)] = structuredClone(value);
         else this[key] = structuredClone(value);
       }
-      save(); fire("updateJournalEntry", this); return this;
+      save(); fire("updateJournalEntry", this, changes); return this;
     },
     async setFlag(namespace, key, value) {
       this.flags[namespace] ??= {};
@@ -63,7 +64,7 @@ Object.assign(globalThis, {
     mergeObject: (base, extra) => ({ ...base, ...extra }),
     randomID: () => crypto.randomUUID().replaceAll("-", "").slice(0, 16)
   } },
-  CONST: { DOCUMENT_OWNERSHIP_LEVELS: { OBSERVER: 2 } },
+  CONST: { DOCUMENT_OWNERSHIP_LEVELS: { LIMITED: 1, OBSERVER: 2 } },
   ui: { notifications: Object.fromEntries(["info", "warn", "error"].map(kind => [kind, message => notify(kind, message)])) },
   game: {
     user: { id: "gm", isGM: true },
@@ -88,7 +89,16 @@ Object.assign(globalThis, {
       }
     },
     journal: { contents: [], get(id) { return this.contents.find(entry => entry.id === id); } },
+    folders: { contents: [] },
     scenes: { contents: [] }
+  },
+  Folder: {
+    async create(data) {
+      if (!game.user.isGM) throw new Error("GM only");
+      const folder = { ...structuredClone(data), id: crypto.randomUUID(),
+        getFlag(namespace, key) { return this.flags?.[namespace]?.[key]; } };
+      game.folders.contents.push(folder); save(); return folder;
+    }
   },
   JournalEntry: {
     async create(data) {
@@ -230,6 +240,9 @@ async function main() {
     const value = JSON.parse(stored);
     for (const [key, data] of Object.entries(value.settings)) settings.set(key, data);
     game.journal.contents = value.journals.map(journal);
+    game.folders.contents = (value.folders ?? []).map(data => ({
+      ...data, getFlag(namespace, key) { return this.flags?.[namespace]?.[key]; }
+    }));
   } else {
     save();
   }

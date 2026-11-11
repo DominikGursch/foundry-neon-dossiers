@@ -13,6 +13,7 @@
   min-height: 34px; padding: 7px 10px; font: inherit; line-height: 1.4; margin: 0; box-shadow: none;
 }
 .neon-dossiers :is(input,select) { height: auto; }
+.neon-dossiers input::placeholder, .neon-dossiers textarea::placeholder { color: #b7b9c9; opacity: 1; }
 .neon-dossiers select option { background: #17181f; color: var(--nd-ink); }
 .neon-dossiers button { width: auto; cursor: pointer; }
 .neon-dossiers button:hover:not(:disabled) { background: #2b1d26; border-color: var(--nd-red); color: #fff; box-shadow: none; }
@@ -126,7 +127,8 @@
 .neon-dossiers .nd-route-controls { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .neon-dossiers .nd-route-controls select { min-width: 0; }
 .neon-dossiers .nd-route-controls :is(select,label) { width: 100%; }
-.neon-dossiers .nd-route-controls label { display: flex; flex-direction: column; gap: 5px; color: var(--nd-muted); font-size: 11px; }
+.neon-dossiers .nd-route-controls label { display: flex; flex-direction: column; gap: 5px; color: #c3c4d0; font-size: 12px; }
+.neon-dossiers .nd-empty { color: #bfc2ce; font-size: 12px; line-height: 1.55; }
 .neon-dossiers .nd-route-summary { display: block; color: var(--nd-cyan); padding: 12px 8px; border-left: 2px solid var(--nd-cyan); background: #14232b; font: 700 13px/1.6 ui-monospace, Consolas, monospace; }
 .neon-dossiers .nd-muted, .neon-dossiers .nd-data-note { color: var(--nd-muted); font-size: 11px; line-height: 1.6; }
 .neon-dossiers .nd-data-note { border-top: 1px solid var(--nd-line); padding-top: 12px; }
@@ -154,7 +156,7 @@
 .neon-dossiers .nd-category-fields { display: grid; gap: 8px; min-width: 0; margin: 0; padding: 10px; border: 1px solid var(--nd-line); border-left: 3px solid var(--nd-category); }
 .neon-dossiers .nd-category-fields input { width: 100%; }
 .neon-dossiers .nd-category-fields input[type="color"] { height: 34px; padding: 3px; cursor: pointer; }
-.neon-dossiers .nd-statusbar { padding: 6px 0; border-top: 1px solid #47303c; font: 9px/1.6 ui-monospace, Consolas, monospace; color: var(--nd-muted); }
+.neon-dossiers .nd-statusbar { padding: 6px 0; border-top: 1px solid #47303c; font: 11px/1.6 ui-monospace, Consolas, monospace; color: #c0c2cf; }
 .neon-dossiers .nd-map-credit { color: var(--nd-cyan); overflow-wrap: anywhere; }
 .neon-dossiers .nd-map-credit:hover { color: var(--nd-cyan); text-decoration: underline; }
 .neon-dossiers .nd-legal { min-width: 0; max-width: 100%; }

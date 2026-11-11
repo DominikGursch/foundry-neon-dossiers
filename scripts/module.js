@@ -1,8 +1,8 @@
 import { ID, DEFAULT_MAP, DEFAULT_CATEGORIES, categoriesData, markerCode, imagePath, placeData, noteText, readablePlaces, filterPlaces, placesOnMap, mapFamily } from "./model.js";
 import { MODES, atlasData, findRoute, roadAccess, withinDistrict } from "./atlas.js";
 import { MAP_PRESETS, starterPlaces, presetAtlas } from "./city.js";
-import { currentAtlas, synchronizeScene, migrateCommunityMap } from "./scene.js";
-import { sceneTransform, scenePoint } from "./canvas.js";
+import { currentAtlas, synchronizeScene, migrateCommunityMap, imageDimensions } from "./scene.js";
+import { sceneTransform, scenePoint, fitSceneView } from "./canvas.js";
 import { inspectNetwork } from "./network.js";
 import { RoadDraft } from "./road-draft.js";
 import { migratePlaceNumbers, createNumberedPlace, updateNumberedPlace } from "./numbering.js";
@@ -240,7 +240,8 @@ export class DossierBoard extends Application {
       list.replaceChildren();
       markers.replaceChildren();
       const results = filterPlaces(districtPlaces, this.query, this.category);
-      if (!results.length) list.append(element("p", { text: t("noPlaces") }));
+      if (!results.length) list.append(element("p", { class: "nd-empty",
+        text: !places.length ? t(game.user.isGM ? "emptyPlacesGM" : "emptyPlacesPlayer") : t("noPlaces") }));
       for (const place of results) {
         const select = () => {
           if (this.editing || this.roadDraft || this.networkDraft || this.categoryDraft) return;
@@ -283,6 +284,8 @@ export class DossierBoard extends Application {
     const allDistricts = button(t("allDistricts"), () => selectDistrict(""), editingLocked);
     allDistricts.setAttribute("aria-pressed", String(!this.district));
     districtList.append(allDistricts);
+    if (!atlas.districts.length) districtList.append(element("p", { class: "nd-empty",
+      text: t(game.user.isGM ? "emptyDistrictsGM" : "emptyDistrictsPlayer") }));
     for (const [index, district] of atlas.districts.entries()) {
       const code = `D-${String(index + 1).padStart(2, "0")}`;
       const row = button(district.name, () => selectDistrict(district.id), editingLocked);
@@ -405,10 +408,12 @@ export class DossierBoard extends Application {
       this.reviewing = false;
       this.draw();
     });
-    routeControls.append(element("label", {}, element("span", { text: t("start") }), origin), mode,
+    routeControls.append(element("label", {}, element("span", { text: t("start") }), origin),
+      element("label", {}, element("span", { text: t("travelMode") }), mode),
       element("label", {}, element("span", { text: t("destination") }), destination),
       button(t(this.pickingOrigin ? "cancel" : "pickStart"), () => { this.pickingOrigin = !this.pickingOrigin; this.draw(); }, editingLocked),
       button(t("clearRoute"), () => { this.origin = null; this.pickingOrigin = false; this.draw(); }, editingLocked));
+    if (!places.length) routeControls.append(element("p", { class: "nd-empty", text: t("emptyRoute") }));
     if (this.pickingOrigin) routeControls.append(element("p", { text: t("pickStartHelp") }));
     if (this.origin) {
       overlay.append(svg("circle", { cx: this.origin.x * atlas.width, cy: this.origin.y * atlas.height, r: 10, class: "nd-origin" }));
@@ -1171,6 +1176,13 @@ export class DossierBoard extends Application {
       input.addEventListener("input", () => { draft[name] = Number(input.value); });
       form.append(element("label", {}, element("span", { text: t(label) }), input));
     }
+    form.append(button(t("detectImageDimensions"), async () => {
+      requireGM();
+      const dimensions = await imageDimensions(draft.image);
+      if (this.atlasDraft !== draft || !this.configuring) return;
+      Object.assign(draft, dimensions);
+      for (const key of ["width", "height"]) form.elements.namedItem(key).value = dimensions[key];
+    }));
     const chooser = element("select", { "aria-label": t("districts") });
     chooser.append(element("option", { value: "", text: t("chooseDistrictEdit") }));
     for (const district of draft.districts) chooser.append(element("option", { value: district.id, text: district.name }));
@@ -1706,6 +1718,7 @@ export class SceneDossierBoard extends DossierBoard {
 
   render() {
     if (!this.root) {
+      this.needsInitialFit = true;
       this.host = element("div", { class: "neon-dossiers nd-scene-hud" });
       this.root = element("div", { class: "nd-root" });
       this.host.append(this.root);
@@ -1716,6 +1729,10 @@ export class SceneDossierBoard extends DossierBoard {
       document.addEventListener("keydown", this.networkKey, true);
     }
     this.draw();
+    if (this.needsInitialFit && this.mapElement) {
+      this.needsInitialFit = false;
+      this.centerMap();
+    }
     return this;
   }
 
@@ -1773,12 +1790,12 @@ export class SceneDossierBoard extends DossierBoard {
   }
 
   centerMap() {
-    const dimensions = canvas.dimensions;
-    canvas.animatePan({
-      x: dimensions.sceneX + dimensions.sceneWidth / 2,
-      y: dimensions.sceneY + dimensions.sceneHeight / 2,
-      scale: canvas.scene.initial?.scale ?? 1
-    }).catch(report);
+    try {
+      const layout = this.root.querySelector(".nd-layout").getBoundingClientRect();
+      const left = this.root.querySelector(".nd-places-sidebar").getBoundingClientRect();
+      const right = this.root.querySelector(".nd-route-sidebar").getBoundingClientRect();
+      canvas.animatePan(fitSceneView(canvas.dimensions, canvas.app.view.getBoundingClientRect(), layout, left, right)).catch(report);
+    } catch (error) { report(error); }
   }
 }
 

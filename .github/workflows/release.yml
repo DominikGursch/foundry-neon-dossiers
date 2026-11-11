@@ -24,7 +24,8 @@ jobs:
               throw new Error("Tag, package and manifest versions must match");
             }
             const root = `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/v${manifest.version}`;
-            if (manifest.manifest !== `${root}/module.json` || manifest.download !== `${root}/neon-dossiers-${manifest.version}.zip`) {
+            if (manifest.manifest !== `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/latest/download/module.json` ||
+                manifest.download !== `${root}/neon-dossiers-${manifest.version}.zip`) {
               throw new Error("Release URLs must match this tag and repository");
             }
           '

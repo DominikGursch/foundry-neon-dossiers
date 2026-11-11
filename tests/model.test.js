@@ -155,6 +155,12 @@ test("ZIP CRC and structure are deterministic and package excludes development f
   const files = [["module.json", Buffer.from("{}")]];
   assert.deepEqual(zipFiles(files), zipFiles(files));
   const { output, files: packed } = await build();
+  const manifest = JSON.parse(packed.find(([name]) => name === "module.json")[1]);
+  const pkg = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  const root = "https://github.com/DominikGursch/foundry-neon-dossiers/releases";
+  assert.equal(manifest.version, pkg.version);
+  assert.equal(manifest.manifest, `${root}/latest/download/module.json`);
+  assert.equal(manifest.download, `${root}/download/v${manifest.version}/neon-dossiers-${manifest.version}.zip`);
   assert.ok(packed.some(([name]) => name === "module.json"));
   assert.ok(packed.some(([name]) => name === "LICENSES/ASSETS.md"));
   assert.ok(packed.some(([name]) => name === "docs/ASSET_SOURCES.md"));

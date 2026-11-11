@@ -2,6 +2,20 @@ import { ID, COMMUNITY_MAP, DEFAULT_MAP, imagePath, readablePlaces, placesOnMap,
 import { atlasData, emptyAtlas } from "./atlas.js";
 import { presetAtlas } from "./city.js";
 
+export async function imageDimensions(path) {
+  const image = new Image();
+  await new Promise((resolve, reject) => {
+    image.onload = resolve;
+    image.onerror = () => reject(new Error("imageError"));
+    image.src = imagePath(path, false);
+  });
+  const width = image.naturalWidth, height = image.naturalHeight;
+  if (![width, height].every(value => Number.isInteger(value) && value >= 100 && value <= 20000)) {
+    throw new Error("invalidImageDimensions");
+  }
+  return { width, height };
+}
+
 export function currentAtlas() {
   const image = imagePath(game.settings.get(ID, "mapImage") || DEFAULT_MAP, false);
   const stored = game.settings.get(ID, "atlases")?.[mapFamily(image)] ?? game.settings.get(ID, "atlas");
@@ -34,7 +48,22 @@ async function sync(create) {
   }
   let scene = game.scenes?.contents.find(item => item.getFlag(ID, "atlasScene"));
   if (!scene && !create) return null;
-  const atlas = currentAtlas();
+  let atlas = currentAtlas();
+  const configurations = game.settings.get(ID, "atlases") ?? {};
+  const legacy = game.settings.get(ID, "atlas");
+  if (atlas.image !== DEFAULT_MAP && !configurations[mapFamily(atlas.image)] &&
+      (!legacy?.image || mapFamily(legacy.image) !== mapFamily(atlas.image)) && !presetAtlas(atlas.image)) {
+    if (game.users?.activeGM && game.users.activeGM.id !== game.user.id) throw new Error("mapSetupActiveGM");
+    const dimensions = await imageDimensions(atlas.image);
+    if (game.settings.get(ID, "mapImage") !== atlas.image) throw new Error("mapChanged");
+    const latest = game.settings.get(ID, "atlases") ?? {};
+    const latestLegacy = game.settings.get(ID, "atlas");
+    if (!latest[mapFamily(atlas.image)] && (!latestLegacy?.image || mapFamily(latestLegacy.image) !== mapFamily(atlas.image))) {
+      await game.settings.set(ID, "atlases", { ...latest, [mapFamily(atlas.image)]: { ...atlas, ...dimensions } });
+    }
+    if (game.settings.get(ID, "mapImage") !== atlas.image) throw new Error("mapChanged");
+    atlas = currentAtlas();
+  }
   const data = {
     name: "Neon Dossiers",
     background: { src: atlas.image },

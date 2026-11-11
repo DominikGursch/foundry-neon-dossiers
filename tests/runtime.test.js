@@ -25,7 +25,11 @@ class Node {
   append(...children) { for (const child of children) child.parentElement = this; this.children.push(...children); }
   replaceChildren(...children) { this.children = [...children]; }
   addEventListener(event, action) { (this.events[event] ??= []).push(action); }
-  getBoundingClientRect() { return { left: 0, top: 0, width: 1000, height: 800 }; }
+  getBoundingClientRect() {
+    if (this.className === "nd-places-sidebar") return { left: 0, right: 200, top: 0, bottom: 800, width: 200, height: 800 };
+    if (this.className === "nd-sidebar nd-route-sidebar") return { left: 800, right: 1000, top: 0, bottom: 800, width: 200, height: 800 };
+    return { left: 0, right: 1000, top: 0, bottom: 800, width: 1000, height: 800 };
+  }
   find(predicate) {
     if (predicate(this)) return this;
     for (const child of this.children) {
@@ -38,6 +42,7 @@ class Node {
     if (selector === '[type="submit"]') return this.find(node => node.attributes.type === "submit");
     const attribute = selector.match(/^\[([a-z-]+)="([^"]+)"\]$/);
     if (attribute) return this.find(node => node.attributes[attribute[1]] === attribute[2]);
+    if (selector.startsWith(".")) return this.find(node => node.className?.split(" ").includes(selector.slice(1)));
     return this.find(node => node.tag === selector);
   }
   async fire(event, extra = {}) {
@@ -195,6 +200,31 @@ test("blank and custom maps start empty without leaking places from another imag
   assert.equal(contains(board.root, "My place"), false);
   assert.ok(game.journal.get(created.id), "switching maps preserves the underlying dossier");
   await created.delete(); await legacy.delete(); await board.close();
+  settings.set("mapImage", previous);
+});
+
+test("map dimension detection updates only the draft until saved", async () => {
+  const previous = settings.get("mapImage");
+  settings.set("mapImage", BLANK_MAP);
+  game.user = { id: "gm", isGM: true };
+  globalThis.Image = class {
+    set src(_path) {
+      this.naturalWidth = 1446; this.naturalHeight = 1375;
+      queueMicrotask(() => this.onload());
+    }
+  };
+  const board = newBoard();
+  board.draw();
+  assert.ok(contains(board.root, en.emptyPlacesGM));
+  assert.ok(contains(board.root, en.emptyDistrictsGM));
+  await findButton(board.root, en.configureAtlas).fire("click");
+  await findButton(board.root, en.detectImageDimensions).fire("click");
+  assert.equal(board.atlasDraft.width, 1446);
+  assert.equal(board.root.querySelector("form").elements.namedItem("height").value, 1375);
+  assert.equal(settings.get("atlases"), undefined);
+  await findButton(board.root, en.cancel).fire("click");
+  assert.equal(settings.get("atlases"), undefined);
+  await board.close();
   settings.set("mapImage", previous);
 });
 
@@ -616,6 +646,9 @@ test("scene HUD auto-mounts, follows the canvas, handles picks and drops revoked
   };
   hooks.get("canvasReady")();
   const board = await module.api.open({ placeId: b.id });
+  assert.equal(pans.length, 1, "initial scene mount fits the map exactly once");
+  board.draw();
+  assert.equal(pans.length, 1, "normal redraws preserve the player's pan and zoom");
   await findButton(board.root, en.closePanel).fire("click");
   assert.equal(board.root.find(node => node.className?.startsWith("nd-dossier-drawer")).attributes.hidden, "");
   await module.api.open({ placeId: b.id });
@@ -654,6 +687,8 @@ test("scene HUD auto-mounts, follows the canvas, handles picks and drops revoked
   assert.equal(board.mapElement.style["--nd-inverse-scale"], "2");
   await findButton(board.root, "+").fire("click");
   assert.equal(pans.at(-1).scale, 0.625);
+  await findButton(board.root, en.resetView).fire("click");
+  assert.equal(pans.at(-1).scale, 0.576, "fit uses the available width between sidebands");
   await findButton(board.root, en.pickStart).fire("click");
   let intercepted = false;
   documentEvents.get("pointerdown")({

@@ -7,7 +7,7 @@ authorized map image in Foundry's module settings.
 
 **Neon Dossiers is unofficial content provided under the Homebrew Content Policy of R. Talsorian Games and is not approved or endorsed by RTG. This content references materials that are the property of R. Talsorian Games and its licensees.**
 
-## City navigation: v0.2.0
+## City navigation: v0.3.0
 
 Browse a map you provide, search places, filter
 GM-defined categories and open dossiers from markers or the place list. GMs can create,
@@ -40,8 +40,13 @@ and stop the district border animation; high-contrast preferences hide screen ov
 **No map is bundled.** The blank background is a neutral placeholder, with
 no districts, places or roads. Upload a map you have permission to use through
 Foundry's file browser and select it under **Module Settings > Neon Dossiers >
-Custom map image**. Set its pixel dimensions and real-world width under
-**GM TOOLS > Map and districts**, then draw districts and roads as desired.
+Custom map image**. Set its real-world width under **GM TOOLS > Map and
+districts**, then draw districts and roads as desired.
+For a new image the active GM's client detects its pixel dimensions automatically.
+Existing saved dimensions are preserved; to correct an earlier configuration,
+use **Detect image dimensions** in that editor and save the configuration.
+Map geometry remains associated with the image, so review existing district and
+road alignment after changing dimensions.
 The map must be a local relative path; remote URLs are not supported.
 
 An upgrade from the formerly bundled community image switches to the blank
@@ -60,13 +65,16 @@ integration with `cyberpunk-red-core` has not been runtime-tested.
 
 ## Install
 
-In Foundry's **Add-on Modules > Install Module**, paste the version-pinned URL:
+In Foundry's **Add-on Modules > Install Module**, paste the latest-release URL:
 
 ```text
-https://github.com/DominikGursch/foundry-neon-dossiers/releases/download/v0.2.0/module.json
+https://github.com/DominikGursch/foundry-neon-dossiers/releases/latest/download/module.json
 ```
 
-This URL requires the v0.2.0 release assets to have been published. Alternatively,
+The previous v0.2.0 manifest was pinned to that release and cannot discover newer
+versions. To move from v0.2.0, use the new URL to reinstall/update the module
+once; back up your world first. Future releases use the stable URL above.
+Alternatively,
 download the source/release files into `Data/modules/neon-dossiers/` so that
 `module.json` is directly inside that directory, then restart Foundry.
 Enable **Neon Dossiers** in your world.
@@ -86,6 +94,8 @@ game.modules.get("neon-dossiers").api.open();
 The GM's first open creates/views the managed scene. Activate it through
 Foundry's scene navigation for players. Its interface appears automatically
 when the scene loads; players do not need a hotkey, journal directory or window.
+On entering the scene the image is fitted between the sidebands. Use **Fit map**
+to restore this view after panning or zooming.
 Opening the module from another scene as a player reports that the GM must
 activate the map; it does not force a scene switch.
 
@@ -138,7 +148,7 @@ Opening the HTML via `file://` is not supported.
 
 To publish a Foundry-installable release, keep `package.json`, `module.json`
 version and the manifest/download URLs aligned, then push the matching tag
-(e.g. `v0.2.0`). The **Publish module release** workflow checks the version,
+(e.g. `v0.3.0`). The **Publish module release** workflow checks the version,
 runs tests, builds the ZIP and attaches the ZIP and `module.json` to that tag's
 release. CI artifacts alone do not make the manifest's release URL live.
 
@@ -388,7 +398,7 @@ npm run build
 npm run build:preview
 ```
 
-The builder creates `dist/neon-dossiers-0.2.0.zip` with `module.json` at the
+The builder creates `dist/neon-dossiers-0.3.0.zip` with `module.json` at the
 archive root and a standalone `dist/module.json`. Only runtime files and
 licensing/provenance notices, including `docs/ASSET_SOURCES.md`, are installed;
 tests, tools and other development docs

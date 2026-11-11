@@ -21,11 +21,17 @@ test("scene lifecycle publishes only globally shared places and preserves unrela
   globalThis.CONST = { DOCUMENT_OWNERSHIP_LEVELS: { OBSERVER: 2 } };
   globalThis.ui = { notifications: { warn() { assert.fail("unexpected invalid place"); } } };
   globalThis.game = {
-    user: { isGM: true }, settings: { get: (_id, name) => settings.get(name) },
+    user: { isGM: true }, settings: { get: (_id, name) => settings.get(name), set: async (_id, name, value) => settings.set(name, value) },
     scenes: { contents: [] },
     journal: { contents: [shared, hidden, individual, limited, excludedPlayer], get(id) { return this.contents.find(entry => entry.id === id); } }
   };
   let serial = 0, creations = 0;
+  globalThis.Image = class {
+    set src(_path) {
+      this.naturalWidth = 1446; this.naturalHeight = 1375;
+      queueMicrotask(() => this.onload());
+    }
+  };
   globalThis.Scene = {
     async create(data) {
       creations++;
@@ -94,6 +100,33 @@ test("scene lifecycle publishes only globally shared places and preserves unrela
   assert.deepEqual(replacement.nodes, [], "new map does not inherit old geography");
   await synchronizeScene();
   assert.equal(scene.background.src, "worlds/test/custom.webp");
+  assert.equal(scene.width, 1446);
+  assert.equal(scene.height, 1375);
+  assert.equal(settings.get("atlases")["worlds/test/custom.webp"].width, 1446);
+  const saved = settings.get("atlases")["worlds/test/custom.webp"];
+  settings.set("atlases", { ...settings.get("atlases"), [saved.image]: { ...saved, width: 1200, height: 900 } });
+  await synchronizeScene();
+  assert.equal(scene.width, 1200, "configured dimensions are not replaced");
+  assert.equal(scene.height, 900);
+  settings.set("mapImage", "worlds/test/broken.webp");
+  globalThis.Image = class { set src(_path) { queueMicrotask(() => this.onerror()); } };
+  await assert.rejects(synchronizeScene(), /imageError/);
+  assert.equal(scene.background.src, saved.image, "failed image detection does not update the scene");
+  assert.equal(settings.get("atlases")["worlds/test/broken.webp"], undefined);
+  let loading;
+  globalThis.Image = class { set src(_path) { loading = this; } };
+  settings.set("mapImage", "worlds/test/first.webp");
+  const pending = synchronizeScene();
+  await new Promise(resolve => setImmediate(resolve));
+  settings.set("mapImage", saved.image);
+  loading.naturalWidth = 1446; loading.naturalHeight = 1375; loading.onload();
+  await assert.rejects(pending, /mapChanged/);
+  assert.equal(settings.get("atlases")["worlds/test/first.webp"], undefined);
+  game.users = { activeGM: { id: "another-gm" } };
+  settings.set("mapImage", "worlds/test/second.webp");
+  await assert.rejects(synchronizeScene(), /mapSetupActiveGM/);
+  settings.set("mapImage", saved.image);
+  delete game.users;
   game.user.isGM = false;
   await assert.rejects(synchronizeScene(true), /Only a GM/);
   game.user.isGM = true;

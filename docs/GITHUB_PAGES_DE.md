@@ -140,6 +140,11 @@ Nimm **diesen von GitHub angezeigten Link**. Der Link zur Repository-Datei
   Beim Zeichnen setzt ein Klick eine Ecke; Ziehen verschiebt die Karte.
   Auf den ersten Punkt klicken oder **Grenze fertig** wählen, um die Form
   zu schließen. Erst **Konfiguration speichern** übernimmt die Änderungen.
+  In Foundry werden die Pixelmaße neuer Karten automatisch erkannt. Für bereits
+  gespeicherte Karten übernimmt **Bildgröße erkennen** die tatsächlichen Maße
+  in den Entwurf; sie gelten erst nach **Konfiguration speichern**. Danach
+  vorhandene Districts und Straßen auf korrekte Ausrichtung prüfen.
+  **Karte einpassen** zeigt die Karte wieder vollständig zwischen den Seitenbändern.
 - Im dauerhaft sichtbaren rechten Menüband **Route** einen Startort und eine Fortbewegung auswählen
   und anschließend einen Zielmarker anklicken oder das Ziel im Menü auswählen.
   Die Route wird direkt auf der simulierten Kartenszene dargestellt, ohne

@@ -44,7 +44,6 @@
     "invalidPlace": "An invalid dossier was skipped. See the console for details.",
     "imageError": "A local dossier or map image could not be loaded. Check its path and file access.",
     "gmNotes": "Private GM notes", "shared": "Default access: all players can observe.",
-    "privateFolder": "Neon Dossiers - Private", "sharedFolder": "Neon Dossiers - Shared",
     "private": "Default access: private. Individual grants may exist; check Permissions.",
     "collectionPrivateStatus": "Private: only GMs can read this place.",
     "share": "Share with all players", "unshare": "Make private (revoke all player grants)",

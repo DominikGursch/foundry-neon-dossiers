@@ -187,7 +187,6 @@ globalThis.Dialog = { confirm: async () => true };
 globalThis.DocumentOwnershipConfig = class extends Application {};
 
 const { DossierBoard, SceneDossierBoard } = await import("../scripts/module.js");
-const { organizeDossiers } = await import("../scripts/folders.js");
 const { collectionPlace, collectionRecords, initializeCollections, deleteCollectionPlace, noteForCollectionPlace } = await import("../scripts/collections.js");
 const newBoard = () => {
   const board = new DossierBoard();
@@ -349,32 +348,40 @@ test("v12 lifecycle, GM CRUD, sharing and player revocation with mocked DOM/core
   await player.close();
 });
 
-test("journal hooks organize shared and private dossiers without closing an open editor", async () => {
+test("obsolete folders stay deleted across journal changes, user updates and world startup", async () => {
   game.user = { id: "gm", isGM: true };
+  const collections = game.journal.contents.filter(entry => entry.getFlag(ID, "collection"));
+  const collectionFolder = game.folders.contents.find(folder => folder.getFlag(ID, "collectionFolder"));
+  const privateFolder = await Folder.create({ name: "Renamed private folder", type: "JournalEntry",
+    flags: { [ID]: { dossierFolder: "private" } } });
+  const sharedFolder = await Folder.create({ name: "Neon Dossiers - Shared", type: "JournalEntry",
+    flags: { [ID]: { dossierFolder: "shared" } } });
+  for (const folder of [privateFolder, sharedFolder]) {
+    game.folders.contents = game.folders.contents.filter(item => item !== folder);
+    await hooks.get("deleteFolder")?.(folder);
+  }
   const entry = await JournalEntry.create({ name: "Folder test", ownership: { default: 0 },
-    flags: { [ID]: { place: EXAMPLES[0] } } });
-  await organizeDossiers();
-  const kind = () => game.folders.contents.find(folder => folder.id === entry.folder)?.getFlag(ID, "dossierFolder");
-  assert.equal(kind(), "private");
+    folder: "user-managed-folder", flags: { [ID]: { place: { ...EXAMPLES[0], markerNumber: 90 } } } });
   await entry.update({ ownership: { default: 2 } });
-  await organizeDossiers();
-  assert.equal(kind(), "shared");
   await entry.update({ ownership: { default: 0, player: 2 } });
-  await organizeDossiers();
-  assert.equal(kind(), "shared");
   await entry.update({ ownership: { default: 0 } });
-  await organizeDossiers();
-  assert.equal(kind(), "private");
+  hooks.get("updateUser")();
+  const mapImage = settings.get("mapImage");
+  await hooks.get("ready")();
+  await new Promise(resolve => setImmediate(resolve));
+  settings.set("mapImage", mapImage);
+  assert.equal(game.folders.contents.some(folder => folder.getFlag(ID, "dossierFolder")), false);
+  assert.equal(entry.folder, "user-managed-folder", "legacy journals are no longer reorganized");
+  assert.deepEqual(game.journal.contents.filter(entry => entry.getFlag(ID, "collection")), collections);
+  assert.equal(game.folders.contents.find(folder => folder.getFlag(ID, "collectionFolder")), collectionFolder);
   const board = newBoard();
   board.selected = entry.id;
   board.draw();
   await findButton(board.root, en.edit).fire("click");
-  entry.folder = null;
-  await organizeDossiers(entry.id);
+  await entry.update({ folder: "another-user-folder" });
   assert.ok(board.editing, "moving a folder does not discard an unsaved editor");
   await board.close();
   await entry.delete();
-  await organizeDossiers();
 });
 
 test("GM note updates replace grants; a failed note save keeps the form and does not duplicate places", async () => {

@@ -7,7 +7,7 @@ authorized map image in Foundry's module settings.
 
 **Neon Dossiers is unofficial content provided under the Homebrew Content Policy of R. Talsorian Games and is not approved or endorsed by RTG. This content references materials that are the property of R. Talsorian Games and its licensees.**
 
-## City navigation: v0.5.0
+## City navigation: v0.5.1
 
 Browse a map you provide, search places, filter
 GM-defined categories and open dossiers from markers or the place list. GMs can create,
@@ -149,7 +149,7 @@ Opening the HTML via `file://` is not supported.
 
 To publish a Foundry-installable release, keep `package.json`, `module.json`
 version and the manifest/download URLs aligned, then push the matching tag
-(e.g. `v0.5.0`). The **Publish module release** workflow checks the version,
+(e.g. `v0.5.1`). The **Publish module release** workflow checks the version,
 runs tests, builds the ZIP and attaches the ZIP and `module.json` to that tag's
 release. CI artifacts alone do not make the manifest's release URL live.
 
@@ -365,6 +365,10 @@ up its corresponding note page; check for orphans if no active GM is online.
 Existing individual journals are **not migrated** into the collections. Back up
 your world before updating or deleting old places and journals. Old journals
 can be removed manually after preserving any data you need.
+The obsolete **Neon Dossiers - Private** and **Neon Dossiers - Shared** folders
+are no longer managed or recreated. After backing up any remaining contents,
+you can delete them in Foundry; the module never deletes existing folders or
+journals automatically.
 Foundry does not document a fixed journal-count limit; large worlds can still
 affect performance. [The Forge's world-size guidance](https://forums.forge-vtt.com/t/world-size-check/12105)
 suggests roughly 2,000 world documents as a performance guideline, not an
@@ -406,7 +410,7 @@ npm run build
 npm run build:preview
 ```
 
-The builder creates `dist/neon-dossiers-0.5.0.zip` with `module.json` at the
+The builder creates `dist/neon-dossiers-0.5.1.zip` with `module.json` at the
 archive root and a standalone `dist/module.json`. Only runtime files and
 licensing/provenance notices, including `docs/ASSET_SOURCES.md`, are installed;
 tests, tools and other development docs

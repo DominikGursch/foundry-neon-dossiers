@@ -6,7 +6,6 @@ import { sceneTransform, scenePoint, fitSceneView } from "./canvas.js";
 import { inspectNetwork } from "./network.js";
 import { RoadDraft } from "./road-draft.js";
 import { migratePlaceNumbers, createNumberedPlace, updateNumberedPlace } from "./numbering.js";
-import { organizeDossiers } from "./folders.js";
 import { collectionRecords, collectionPlace, initializeCollections, setCollectionExample, shareCollectionPlace,
   noteForCollectionPlace, saveCollectionNote, deleteCollectionPlace, cleanupCollectionNote } from "./collections.js";
 
@@ -1936,17 +1935,8 @@ for (const hook of ["createJournalEntry", "updateJournalEntry", "deleteJournalEn
       board.refresh();
     }
     syncIfGM();
-    if (hook === "updateUser") organizeDossiers().catch(report);
-    if (hook === "createJournalEntry" && entry?.getFlag(ID, "place")) organizeDossiers(entry.id).catch(report);
-    if (hook === "updateJournalEntry" && entry?.getFlag(ID, "place") &&
-        (Object.hasOwn(changes ?? {}, "ownership") || Object.keys(changes ?? {}).some(key => key.startsWith("ownership.")))) {
-      organizeDossiers(entry.id).catch(report);
-    }
   });
 }
-Hooks.on("deleteFolder", folder => {
-  if (folder.getFlag(ID, "dossierFolder")) organizeDossiers().catch(report);
-});
 
 for (const hook of ["createJournalEntryPage", "updateJournalEntryPage", "deleteJournalEntryPage"]) {
   Hooks.on(hook, page => {
@@ -1975,7 +1965,7 @@ function syncIfGM() {
 }
 
 Hooks.once("ready", async () => {
-  try { await migrateCommunityMap(); await migratePlaceNumbers().catch(report); await organizeDossiers().catch(report);
+  try { await migrateCommunityMap(); await migratePlaceNumbers().catch(report);
     if (game.user.isGM && (!game.users?.activeGM || game.users.activeGM.id === game.user.id)) await initializeCollections().catch(report);
     syncIfGM(); mountSceneBoard(); }
   catch (error) { report(error); }

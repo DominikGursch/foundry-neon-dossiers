@@ -7,6 +7,8 @@ import { inspectNetwork } from "./network.js";
 import { RoadDraft } from "./road-draft.js";
 import { migratePlaceNumbers, createNumberedPlace, updateNumberedPlace } from "./numbering.js";
 import { organizeDossiers } from "./folders.js";
+import { collectionRecords, collectionPlace, initializeCollections, setCollectionExample, shareCollectionPlace,
+  noteForCollectionPlace, saveCollectionNote, deleteCollectionPlace, cleanupCollectionNote } from "./collections.js";
 
 const t = key => game.i18n.localize(`ND.${key}`);
 const windows = new Set();
@@ -60,7 +62,7 @@ function colorCategory(node, id, definitions = currentCategories()) {
 }
 
 function categoryUsage(id) {
-  return game.journal.contents.filter(entry => entry.getFlag(ID, "place")?.category === id).length;
+  return [...game.journal.contents, ...collectionRecords()].filter(entry => entry.getFlag(ID, "place")?.category === id).length;
 }
 
 function svg(tag, attributes = {}) {
@@ -70,12 +72,24 @@ function svg(tag, attributes = {}) {
 }
 
 function allPlaces() {
-  return placesOnMap(readablePlaces(game.journal.contents, game.user, (entry, error) => {
+  const legacy = readablePlaces(game.journal.contents, game.user, (entry, error) => {
     if (invalidEntries.has(entry.id)) return;
     invalidEntries.add(entry.id);
     console.error(`${ID}: invalid place ${entry.id}`, error);
     ui.notifications.warn(t("invalidPlace"));
-  }), currentAtlas().image);
+  });
+  const collected = [];
+  for (const entry of collectionRecords()) {
+    try { collected.push({ id: entry.id, ...placeData(entry.getFlag(ID, "place")) }); }
+    catch (error) {
+      if (!invalidEntries.has(entry.id)) {
+        invalidEntries.add(entry.id);
+        console.error(`${ID}: invalid place ${entry.id}`, error);
+        ui.notifications.warn(t("invalidPlace"));
+      }
+    }
+  }
+  return placesOnMap([...legacy, ...collected], currentAtlas().image);
 }
 
 function privateNote(placeId) {
@@ -85,6 +99,7 @@ function privateNote(placeId) {
 
 async function saveNote(placeId, value) {
   requireGM();
+  if (collectionPlace(placeId)) return saveCollectionNote(placeId, value);
   const text = noteText(value);
   const existing = privateNote(placeId);
   if (existing) {
@@ -325,12 +340,13 @@ export class DossierBoard extends Application {
         let reassigned = false;
         for (const [index, example] of examples.entries()) {
           const key = `${atlas.image}:${index}`;
-          const exists = game.journal.contents.some(entry => entry.getFlag(ID, "example") === key);
+          const exists = [...game.journal.contents, ...collectionRecords()].some(entry => entry.getFlag(ID, "example") === key);
           if (exists) continue;
           const category = definitions.some(category => category.id === example.category) ? example.category : definitions[0].id;
           if (category !== example.category) reassigned = true;
           const entry = await createPlace({ ...example, category });
-          await entry.setFlag(ID, "example", key);
+          if (entry.page) await setCollectionExample(entry.id, key);
+          else await entry.setFlag(ID, "example", key);
         }
         ui.notifications.info(t("examplesReady"));
         if (reassigned) ui.notifications.info(t("exampleCategoriesReassigned"));
@@ -1401,9 +1417,10 @@ export class DossierBoard extends Application {
     }));
     panel.append(button(t("useAsStart"), () => { this.origin = place; this.draw(); }));
     if (!game.user.isGM) return;
-    const entry = game.journal.get(place.id);
-    const shared = entry.ownership.default >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER;
-    panel.append(element("p", { text: t(shared ? "shared" : "private") }));
+    const record = collectionPlace(place.id);
+    const entry = record?.journal ?? game.journal.get(place.id);
+    const shared = record ? record.kind === "shared" : entry.ownership.default >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER;
+    panel.append(element("p", { text: t(shared ? "shared" : record ? "collectionPrivateStatus" : "private") }));
     panel.append(button(t("edit"), () => {
       this.editing = structuredClone(place);
       this.tracingAccess = false;
@@ -1412,21 +1429,26 @@ export class DossierBoard extends Application {
     }), button(t(shared ? "unshare" : "share"), async () => {
       requireGM();
       // Replace all grants so "private" also revokes individually assigned access.
-      await entry.update({ ownership: { default: shared ? 0 : CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER } },
+      if (record) await shareCollectionPlace(place.id, !shared);
+      else await entry.update({ ownership: { default: shared ? 0 : CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER } },
         { diff: false, recursive: false });
-    }), button(t("permissions"), () => {
+      this.draw();
+    }), ...(!record ? [button(t("permissions"), () => {
       requireGM();
       new DocumentOwnershipConfig(entry).render(true);
-    }), button(t("delete"), async () => {
+    })] : []), button(t("delete"), async () => {
       requireGM();
       if (!await Dialog.confirm({ title: t("delete"), content: `<p>${t("confirmDelete")}</p>` })) return;
-      const note = privateNote(place.id);
-      if (note) await note.delete();
-      await entry.delete();
+      if (record) await deleteCollectionPlace(place.id);
+      else {
+        const note = privateNote(place.id);
+        if (note) await note.delete();
+        await entry.delete();
+      }
       this.selected = null;
       this.draw();
     }));
-    const notes = privateNote(place.id)?.getFlag(ID, "note") ?? "";
+    const notes = record ? noteForCollectionPlace(place.id) : privateNote(place.id)?.getFlag(ID, "note") ?? "";
     panel.append(element("h3", { text: t("gmNotes") }), element("p", { class: "nd-description", text: notes }));
   }
 
@@ -1563,7 +1585,7 @@ export class DossierBoard extends Application {
         }
       });
     }
-    data.notes ??= data.id ? privateNote(data.id)?.getFlag(ID, "note") ?? "" : "";
+    data.notes ??= data.id ? (collectionPlace(data.id) ? noteForCollectionPlace(data.id) : privateNote(data.id)?.getFlag(ID, "note") ?? "") : "";
     field("notes", "gmNotes", { multiline: true, maxlength: 12000, rows: 4 });
     form.append(element("button", { type: "submit", text: t("save") }), button(t("cancel"), () => {
       this.editing = null;
@@ -1589,7 +1611,7 @@ export class DossierBoard extends Application {
         const notes = noteText(values.notes);
         let entry;
         if (data.id) {
-          entry = game.journal.get(data.id);
+          entry = collectionRecords().find(item => item.id === data.id) ?? game.journal.get(data.id);
           if (!entry) throw new Error(t("missingPlace"));
           await updateNumberedPlace(entry, place);
         } else entry = await createPlace(place);
@@ -1926,6 +1948,26 @@ Hooks.on("deleteFolder", folder => {
   if (folder.getFlag(ID, "dossierFolder")) organizeDossiers().catch(report);
 });
 
+for (const hook of ["createJournalEntryPage", "updateJournalEntryPage", "deleteJournalEntryPage"]) {
+  Hooks.on(hook, page => {
+    if (!page.parent?.getFlag(ID, "collection")) return;
+    for (const board of windows) {
+      if (board.saving) continue;
+      if (!game.user.isGM) {
+        board.editing = null;
+        board.roadDraft = null;
+        board.tracingAccess = false;
+      }
+      board.refresh();
+    }
+    if (hook === "deleteJournalEntryPage" && page.parent.getFlag(ID, "collection") !== "notes" &&
+        game.user.isGM && (!game.users?.activeGM || game.users.activeGM.id === game.user.id)) {
+      cleanupCollectionNote(page.getFlag(ID, "collectionPlaceId")).catch(report);
+    }
+    syncIfGM();
+  });
+}
+
 function syncIfGM() {
   if (game.user.isGM && (!game.users?.activeGM || game.users.activeGM.id === game.user.id)) {
     synchronizeScene().catch(report);
@@ -1933,7 +1975,9 @@ function syncIfGM() {
 }
 
 Hooks.once("ready", async () => {
-  try { await migrateCommunityMap(); await migratePlaceNumbers().catch(report); await organizeDossiers().catch(report); syncIfGM(); mountSceneBoard(); }
+  try { await migrateCommunityMap(); await migratePlaceNumbers().catch(report); await organizeDossiers().catch(report);
+    if (game.user.isGM && (!game.users?.activeGM || game.users.activeGM.id === game.user.id)) await initializeCollections().catch(report);
+    syncIfGM(); mountSceneBoard(); }
   catch (error) { report(error); }
 });
 Hooks.on("canvasReady", () => {

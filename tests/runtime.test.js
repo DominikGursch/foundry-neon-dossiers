@@ -120,8 +120,38 @@ globalThis.JournalEntry = {
   async create(data) {
     const entry = {
       ...structuredClone(data), id: `entry${++serial}`,
+      pages: { contents: [] },
       getFlag(namespace, key) { return this.flags?.[namespace]?.[key]; },
       testUserPermission(user) { return user.isGM || (this.ownership[user.id] ?? this.ownership.default) >= 2; },
+      async createEmbeddedDocuments(type, documents) {
+        assert.equal(type, "JournalEntryPage");
+        return documents.map(data => {
+          const page = {
+            ...structuredClone(data), id: `page${++serial}`, parent: this,
+            getFlag(namespace, key) { return this.flags?.[namespace]?.[key]; },
+            testUserPermission(user) { return this.parent.testUserPermission(user); },
+            async update(data) {
+              this.name = data.name;
+              this.text = structuredClone(data.text);
+              for (const [key, value] of Object.entries(data.flags[ID])) {
+                if (key === "place") {
+                  for (const [field, v] of Object.entries(value)) {
+                    if (field.startsWith("-=")) delete this.flags[ID].place[field.slice(2)];
+                    else this.flags[ID].place[field] = structuredClone(v);
+                  }
+                } else this.flags[ID][key] = structuredClone(value);
+              }
+              hooks.get("updateJournalEntryPage")?.(this, data);
+            },
+            async setFlag(namespace, key, value) { this.flags[namespace][key] = value; hooks.get("updateJournalEntryPage")?.(this, {}); },
+            async delete() { this.parent.pages.contents = this.parent.pages.contents.filter(page => page !== this);
+              hooks.get("deleteJournalEntryPage")?.(this); }
+          };
+          this.pages.contents.push(page);
+          hooks.get("createJournalEntryPage")?.(page);
+          return page;
+        });
+      },
       async update(change, options) {
         updates.push({ change, options });
         for (const [key, value] of Object.entries(change)) {
@@ -158,6 +188,7 @@ globalThis.DocumentOwnershipConfig = class extends Application {};
 
 const { DossierBoard, SceneDossierBoard } = await import("../scripts/module.js");
 const { organizeDossiers } = await import("../scripts/folders.js");
+const { collectionPlace, collectionRecords, initializeCollections, deleteCollectionPlace, noteForCollectionPlace } = await import("../scripts/collections.js");
 const newBoard = () => {
   const board = new DossierBoard();
   board.root = new Node("div");
@@ -208,14 +239,15 @@ test("blank and custom maps start empty without leaking places from another imag
   const form = board.root.querySelector("form");
   form.elements.namedItem("title").value = "My place";
   await form.fire("submit");
-  const created = game.journal.get(board.selected);
-  assert.equal(created.getFlag(ID, "place").mapImage, ownMap);
+  const created = collectionPlace(board.selected);
+  const createdId = created.id;
+  assert.equal(created.page.getFlag(ID, "place").mapImage, ownMap);
   assert.equal(contains(board.root, "My place"), true);
   settings.set("mapImage", BLANK_MAP);
   board.draw();
   assert.equal(contains(board.root, "My place"), false);
-  assert.ok(game.journal.get(created.id), "switching maps preserves the underlying dossier");
-  await created.delete(); await legacy.delete(); await board.close();
+  assert.ok(collectionPlace(createdId), "switching maps preserves the underlying dossier");
+  await deleteCollectionPlace(createdId); await legacy.delete(); await board.close();
   settings.set("mapImage", previous);
 });
 
@@ -263,12 +295,12 @@ test("v12 lifecycle, GM CRUD, sharing and player revocation with mocked DOM/core
   const gm = newBoard();
   gm.draw();
   await findButton(gm.root, en.examples).fire("click");
-  assert.equal(game.journal.contents.length, 7);
-  assert.ok(game.journal.contents.every(entry => entry.ownership.default === 0));
+  assert.equal(collectionRecords().length, 7);
+  assert.ok(collectionRecords().every(entry => entry.kind === "private"));
   await findButton(gm.root, en.examples).fire("click");
-  assert.equal(game.journal.contents.length, 7, "example creation is idempotent");
+  assert.equal(collectionRecords().length, 7, "example creation is idempotent");
 
-  const place = game.journal.contents[0];
+  const place = collectionRecords()[0];
   gm.selected = place.id;
   gm.draw();
   await findButton(gm.root, en.edit).fire("click");
@@ -277,16 +309,14 @@ test("v12 lifecycle, GM CRUD, sharing and player revocation with mocked DOM/core
   form.elements.namedItem("title").value = dangerous;
   form.elements.namedItem("notes").value = "GM-only clue";
   await form.fire("submit");
-  assert.equal(place.flags[ID].place.title, dangerous);
-  assert.equal(place.flags[ID].note, undefined);
-  const privateEntry = game.journal.contents.find(entry => entry.flags[ID].noteFor === place.id);
-  assert.equal(privateEntry.flags[ID].note, "GM-only clue");
+  assert.equal(collectionPlace(place.id).page.getFlag(ID, "place").title, dangerous);
+  assert.equal(noteForCollectionPlace(place.id), "GM-only clue");
+  const privateEntry = game.journal.contents.find(entry => entry.getFlag(ID, "collection") === "notes");
   assert.deepEqual(privateEntry.ownership, { default: 0 });
   assert.ok(contains(gm.root, dangerous), "unsafe-looking title remains literal text");
 
   await findButton(gm.root, en.share).fire("click");
-  assert.deepEqual(place.ownership, { default: 2 });
-  assert.equal(updates.findLast(item => item.change.ownership)?.options.recursive, false);
+  assert.equal(collectionPlace(place.id).kind, "shared");
 
   game.user = { id: "player", isGM: false };
   const player = newBoard();
@@ -297,23 +327,22 @@ test("v12 lifecycle, GM CRUD, sharing and player revocation with mocked DOM/core
   assert.equal(player.root.find(node => node.textContent === en.edit), null);
   assert.equal(privateEntry.testUserPermission(game.user), false);
 
-  // Simulate server ownership update received by a connected player.
-  place.ownership = { default: 0 };
-  hooks.get("updateJournalEntry")(place);
+  game.user = { id: "gm", isGM: true };
+  gm.selected = place.id;
+  gm.draw();
+  await findButton(gm.root, en.unshare).fire("click");
+  game.user = { id: "player", isGM: false };
+  player.draw();
   assert.equal(player.selected, null);
   assert.ok(!contains(player.root, dangerous), "rendered dossier discarded on revocation");
 
   game.user = { id: "gm", isGM: true };
   gm.selected = place.id;
-  place.ownership = { default: 2, player: 3 };
-  gm.draw();
-  await findButton(gm.root, en.unshare).fire("click");
-  assert.deepEqual(place.ownership, { default: 0 }, "individual grants removed");
   gm.selected = place.id;
   gm.draw();
   await findButton(gm.root, en.delete).fire("click");
-  assert.equal(game.journal.get(place.id), undefined);
-  assert.equal(game.journal.get(privateEntry.id), undefined);
+  assert.equal(collectionPlace(place.id), undefined);
+  assert.equal(noteForCollectionPlace(place.id), "");
   assert.equal(notifications.filter(([kind]) => kind === "error").length, 0);
 
   await gm.close();
@@ -350,35 +379,33 @@ test("journal hooks organize shared and private dossiers without closing an open
 
 test("GM note updates replace grants; a failed note save keeps the form and does not duplicate places", async () => {
   game.user = { id: "gm", isGM: true };
+  await initializeCollections();
   const gm = newBoard();
   gm.editing = { ...EXAMPLES[0] };
   gm.draw();
   let form = gm.root.querySelector("form");
   form.elements.namedItem("notes").value = "draft";
-  const originalCreate = JournalEntry.create;
-  JournalEntry.create = async data => {
-    if (data.flags[ID].noteFor) throw new Error("simulated storage error");
-    return originalCreate(data);
-  };
-  const before = game.journal.contents.length;
+  const noteJournal = game.journal.contents.find(entry => entry.getFlag(ID, "collection") === "notes");
+  const originalCreate = noteJournal.createEmbeddedDocuments;
+  noteJournal.createEmbeddedDocuments = async () => { throw new Error("simulated storage error"); };
+  const before = collectionRecords().length;
   const originalConsole = console.error;
   console.error = () => {};
-  try { await form.fire("submit"); } finally { console.error = originalConsole; JournalEntry.create = originalCreate; }
-  assert.equal(game.journal.contents.length, before + 1);
+  try { await form.fire("submit"); } finally { console.error = originalConsole; noteJournal.createEmbeddedDocuments = originalCreate; }
+  assert.equal(collectionRecords().length, before + 1);
   assert.ok(gm.editing.id);
   assert.equal(gm.root.querySelector("form"), form);
   assert.equal(form.elements.namedItem("notes").value, "draft");
   assert.equal(notifications.at(-1)[0], "error");
   await form.fire("submit");
-  assert.equal(game.journal.contents.length, before + 2, "one place and one private note");
-  const note = game.journal.contents.find(entry => entry.flags[ID].noteFor === gm.selected);
-  note.ownership = { default: 2, player: 3 };
+  assert.equal(collectionRecords().length, before + 1, "retry does not duplicate the place");
   await findButton(gm.root, en.edit).fire("click");
   form = gm.root.querySelector("form");
   form.elements.namedItem("notes").value = "updated";
   await form.fire("submit");
-  assert.deepEqual(note.ownership, { default: 0 });
-  assert.equal(note.flags[ID].note, "updated");
+  assert.deepEqual(noteJournal.ownership, { default: 0 });
+  assert.equal(noteForCollectionPlace(gm.selected), "updated");
+  await deleteCollectionPlace(gm.selected);
   await gm.close();
 });
 
@@ -429,7 +456,7 @@ test("Community examples stay idempotent and configuration stays a draft", async
   settings.set("mapImage", COMMUNITY_MAP);
   board.draw();
   await findButton(board.root, en.examples).fire("click");
-  const count = () => game.journal.contents.filter(entry => entry.getFlag(ID, "example") !== undefined &&
+  const count = () => collectionRecords().filter(entry => entry.getFlag(ID, "example") !== undefined &&
     entry.getFlag(ID, "place")?.mapImage === COMMUNITY_MAP).length;
   assert.equal(count(), 7);
   board.draw();
@@ -590,7 +617,7 @@ test("GM draws roads and explicit access paths without editing JSON", async () =
   const form = board.root.querySelector("form");
   assert.equal(board.editing.roadNode, roadNode);
   await form.fire("submit");
-  const saved = game.journal.get(board.selected).flags[ID].place;
+  const saved = collectionPlace(board.selected).page.getFlag(ID, "place");
   assert.equal(saved.title, "Traced place");
   assert.equal(saved.roadNode, roadNode);
   assert.deepEqual(saved.access, [{ x: 0.25, y: 0.3 }, { x: 0.22, y: 0.3 }, { x: atlas.nodes[0].x, y: atlas.nodes[0].y }]);
@@ -952,12 +979,12 @@ test("GM categories stay drafts, preserve assignments and style filters, dossier
   assert.equal(board.dossierMarker.style["--nd-category"], "#aaff00");
   form.elements.namedItem("title").value = "Custom category clinic";
   await form.fire("submit");
-  const entry = game.journal.get(board.selected);
+  const entry = collectionRecords().find(item => item.id === board.selected);
   assert.equal(entry.getFlag(ID, "place").category, customId);
   const categoryText = board.root.find(node => node.className === `nd-category nd-cat-${customId}`);
   assert.equal(categoryText.textContent, "Clinics <not markup>");
   assert.equal(categoryText.style["--nd-category"], "#aaff00");
-  const marker = board.root.find(node => node.attributes["aria-label"] === entry.name);
+  const marker = board.root.find(node => node.attributes["aria-label"] === entry.getFlag(ID, "place").title);
   assert.equal(marker.style["--nd-category"], "#aaff00");
   assert.equal(marker.textContent, "PU01");
   await findButton(board.root, en.share).fire("click");
@@ -986,10 +1013,10 @@ test("GM categories stay drafts, preserve assignments and style filters, dossier
   assert.equal(board.root.find(node => node.textContent === en.manageCategories), null);
   assert.throws(() => board.drawCategoryEditor(new Node("section")), /Only a GM/);
   assert.ok(board.root.find(node => node.textContent.startsWith("Medical ·")));
-  assert.equal(board.root.find(node => node.attributes["aria-label"] === entry.name).style["--nd-category"], "#bb99ff");
+  assert.equal(board.root.find(node => node.attributes["aria-label"] === entry.getFlag(ID, "place").title).style["--nd-category"], "#bb99ff");
   assert.equal(contains(board.root, "Retained legacy dossier"), false);
   game.user = { id: "gm", isGM: true };
-  await entry.delete();
+  await deleteCollectionPlace(entry.id);
   await legacy.delete();
   await board.close();
   settings.delete("categories");
@@ -1052,11 +1079,11 @@ test("example dossiers use configured categories when original defaults were rem
   try {
     board.draw();
     await findButton(board.root, en.examples).fire("click");
-    assert.equal(game.journal.contents.length, 7);
-    assert.ok(game.journal.contents.every(entry => entry.getFlag(ID, "place").category === "custom"));
+    assert.equal(collectionRecords().length, 7);
+    assert.ok(collectionRecords().every(entry => entry.getFlag(ID, "place").category === "custom"));
     assert.equal(notifications.at(-1)[1], en.exampleCategoriesReassigned);
     await findButton(board.root, en.examples).fire("click");
-    assert.equal(game.journal.contents.length, 7, "remapped examples are still idempotent");
+    assert.equal(collectionRecords().length, 7, "remapped examples are still idempotent");
   } finally {
     await board.close();
     game.journal.contents = journals;

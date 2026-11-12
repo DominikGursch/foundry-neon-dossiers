@@ -1,6 +1,7 @@
-import { ID, COMMUNITY_MAP, DEFAULT_MAP, imagePath, readablePlaces, placesOnMap, mapFamily } from "./model.js";
+import { ID, COMMUNITY_MAP, DEFAULT_MAP, imagePath, readablePlaces, placesOnMap, mapFamily, placeData } from "./model.js";
 import { atlasData, emptyAtlas } from "./atlas.js";
 import { presetAtlas } from "./city.js";
+import { collectionRecords } from "./collections.js";
 
 export async function imageDimensions(path) {
   const image = new Image();
@@ -75,15 +76,27 @@ async function sync(create) {
     const { name: _name, ...managed } = data;
     await scene.update(managed);
   }
-  const places = placesOnMap(readablePlaces(game.journal.contents, game.user, (entry, error) => {
+  const legacyPlaces = readablePlaces(game.journal.contents, game.user, (entry, error) => {
     console.error(`${ID}: invalid scene place ${entry.id}`, error);
     ui.notifications.warn(game.i18n.localize("ND.invalidPlace"));
-  }), atlas.image).filter(place => {
+  }).filter(place => {
     const ownership = game.journal.get(place.id).ownership;
     const observer = CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER;
     return ownership.default >= observer && Object.entries(ownership).every(([id, level]) =>
       id === "default" || level === -1 || level >= observer || game.users?.get(id)?.isGM);
-  });
+  }).map(place => ({ ...place, entryId: place.id }));
+  const globallyVisible = (ownership, inherited) => {
+    const observer = CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER;
+    const defaultLevel = ownership?.default ?? -1;
+    return (defaultLevel === -1 ? inherited : defaultLevel >= observer) &&
+      Object.entries(ownership ?? {}).every(([id, level]) =>
+        id === "default" || level === -1 || level >= observer || game.users?.get?.(id)?.isGM);
+  };
+  const collected = collectionRecords().filter(record => record.kind === "shared" &&
+    globallyVisible(record.journal.ownership, false) && globallyVisible(record.page.ownership, true)).map(record => ({
+    id: record.id, ...placeData(record.getFlag(ID, "place")), entryId: record.journal.id, pageId: record.page.id
+  }));
+  const places = placesOnMap([...legacyPlaces, ...collected], atlas.image);
   const notes = scene.notes.contents.filter(note => note.getFlag(ID, "placeId"));
   const visible = new Set(places.map(place => place.id));
   const removed = notes.filter(note => !visible.has(note.getFlag(ID, "placeId"))).map(note => note.id);
@@ -91,7 +104,8 @@ async function sync(create) {
   const creates = [], updates = [];
   for (const place of places) {
     const data = {
-      entryId: place.id, x: Math.round((scene.dimensions?.sceneX ?? 0) + place.x * atlas.width),
+      entryId: place.entryId, ...(place.pageId ? { pageId: place.pageId } : {}),
+      x: Math.round((scene.dimensions?.sceneX ?? 0) + place.x * atlas.width),
       y: Math.round((scene.dimensions?.sceneY ?? 0) + place.y * atlas.height),
       texture: { src: "icons/svg/book.svg" }, iconSize: 40, text: place.title, global: true,
       flags: { [ID]: { placeId: place.id } }

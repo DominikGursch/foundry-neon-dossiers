@@ -23,9 +23,34 @@ function setup(places = [], counters = {}) {
   globalThis.game = {
     user: { id: "gm", isGM: true }, users: { activeGM: { id: "gm" } },
     settings: { get: (_id, name) => settings.get(name), set: async (_id, name, value) => settings.set(name, value) },
-    journal: { contents: places.map(entry) }
+    journal: { contents: places.map(entry) }, folders: { contents: [] },
+    i18n: { localize: key => key }
   };
+  globalThis.CONST = { DOCUMENT_OWNERSHIP_LEVELS: { OBSERVER: 2 } };
+  globalThis.foundry = { utils: { randomID: () => `place-${++serial}` } };
+  globalThis.Folder = { async create(data) {
+    const folder = { ...data, id: "folder", getFlag: (ns, key) => data.flags?.[ns]?.[key] };
+    game.folders.contents.push(folder); return folder;
+  } };
   globalThis.JournalEntry = { async create(data) {
+    if (data.flags[ID].collection) {
+      const journal = { ...data, id: `journal-${++serial}`, pages: { contents: [] },
+        getFlag: (ns, key) => data.flags?.[ns]?.[key],
+        testUserPermission: user => user.isGM || data.ownership.default >= 2,
+        async createEmbeddedDocuments(_type, docs) {
+          return docs.map(doc => {
+            const page = { ...structuredClone(doc), id: `page-${++serial}`, parent: journal,
+              getFlag(ns, key) { return this.flags?.[ns]?.[key]; },
+              testUserPermission(user) { return journal.testUserPermission(user); },
+              async update(update) { this.name = update.name; this.text = update.text; this.flags[ID].place = structuredClone(update.flags[ID].place); },
+              async delete() { journal.pages.contents = journal.pages.contents.filter(p => p !== this); }
+            };
+            journal.pages.contents.push(page); return page;
+          });
+        }
+      };
+      game.journal.contents.push(journal); return journal;
+    }
     const created = entry(data.flags[ID].place);
     game.journal.contents.push(created);
     return created;

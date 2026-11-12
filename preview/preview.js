@@ -16,7 +16,10 @@ const fire = (name, ...args) => Promise.all((hooks.get(name) ?? []).map(action =
 const save = () => {
   localStorage.setItem(storageKey, JSON.stringify({
     settings: Object.fromEntries(settings),
-    journals: game.journal.contents.map(({ id, name, ownership, flags, folder }) => ({ id, name, ownership, flags, folder })),
+    journals: game.journal.contents.map(({ id, name, ownership, flags, folder, pages }) =>
+      ({ id, name, ownership, flags, folder, pages: pages.contents.map(page => ({
+        id: page.id, name: page.name, type: page.type, text: page.text, flags: page.flags
+      })) })),
     folders: game.folders.contents.map(({ id, name, type, flags }) => ({ id, name, type, flags }))
   }));
 };
@@ -24,10 +27,19 @@ const settings = new Map([["mapImage", DEFAULT_MAP]]);
 const configs = new Map();
 
 function journal(data) {
-  return {
+  const entry = {
     ...structuredClone(data),
+    pages: { contents: [] },
     getFlag(namespace, key) { return this.flags?.[namespace]?.[key]; },
     testUserPermission(user) { return user.isGM || (this.ownership[user.id] ?? this.ownership.default) >= 2; },
+    async createEmbeddedDocuments(type, documents) {
+      if (type !== "JournalEntryPage") throw new Error("Unsupported embedded document type");
+      const created = documents.map(data => page({ ...data, id: crypto.randomUUID() }, this));
+      this.pages.contents.push(...created);
+      save();
+      for (const item of created) fire("createJournalEntryPage", item);
+      return created;
+    },
     async update(changes) {
       for (const [key, value] of Object.entries(changes)) {
         if (key.startsWith(`flags.${ID}.`)) {
@@ -52,6 +64,31 @@ function journal(data) {
       game.journal.contents = game.journal.contents.filter(entry => entry !== this);
       save(); fire("deleteJournalEntry", this);
     }
+  };
+  entry.pages.contents = (data.pages ?? []).map(item => page(item, entry));
+  return entry;
+}
+
+function page(data, parent) {
+  return {
+    ...structuredClone(data), parent,
+    getFlag(namespace, key) { return this.flags?.[namespace]?.[key]; },
+    testUserPermission(user) { return parent.testUserPermission(user); },
+    async update(data) {
+      this.name = data.name; this.text = structuredClone(data.text);
+      for (const [key, value] of Object.entries(data.flags[ID])) {
+        if (key === "place") {
+          for (const [field, v] of Object.entries(value)) {
+            if (field.startsWith("-=")) delete this.flags[ID].place[field.slice(2)];
+            else this.flags[ID].place[field] = structuredClone(v);
+          }
+        } else this.flags[ID][key] = structuredClone(value);
+      }
+      save(); fire("updateJournalEntryPage", this, data); return this;
+    },
+    async setFlag(namespace, key, value) { this.flags[namespace][key] = value; save(); fire("updateJournalEntryPage", this, {}); },
+    async delete() { parent.pages.contents = parent.pages.contents.filter(item => item !== this);
+      save(); fire("deleteJournalEntryPage", this); }
   };
 }
 

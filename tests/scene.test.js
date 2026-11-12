@@ -81,6 +81,28 @@ test("scene lifecycle publishes only globally shared places and preserves unrela
   await synchronizeScene();
   assert.deepEqual(scene.notes.contents.map(note => note.id), ["other-module-note"], "revocation removes public scene coordinates");
 
+  const page = { id: "page-1", ownership: { default: -1 }, flags: { [ID]: {
+    collectionPlaceId: "place-1", place: EXAMPLES[0]
+  } }, getFlag(ns, key) { return this.flags[ns]?.[key]; }, testUserPermission: () => true };
+  const collection = { id: "collection", ownership: { default: 2 }, pages: { contents: [page] },
+    getFlag(_ns, key) { return key === "collection" ? "shared" : undefined; },
+    testUserPermission: () => true };
+  game.journal.contents.push(collection);
+  await synchronizeScene();
+  const collectionNote = scene.notes.contents.find(item => item.getFlag(ID, "placeId") === "place-1");
+  assert.equal(collectionNote.entryId, "collection");
+  assert.equal(collectionNote.pageId, "page-1");
+  page.ownership = { default: -1, player: 0 };
+  await synchronizeScene();
+  assert.equal(scene.notes.contents.some(item => item.getFlag(ID, "placeId") === "place-1"), false,
+    "page-level revocation removes publicly readable scene coordinates");
+  page.ownership = { default: -1 };
+  collection.ownership.default = 0;
+  await synchronizeScene();
+  assert.equal(scene.notes.contents.some(item => item.getFlag(ID, "placeId") === "place-1"), false,
+    "journal-level revocation removes publicly readable scene coordinates");
+  game.journal.contents = game.journal.contents.filter(item => item !== collection);
+
   shared.ownership = { default: 2 };
   shared.getFlag = () => ({ ...COMMUNITY_EXAMPLES[0], mapImage: "worlds/old/map.webp" });
   const community = makeEntry("community", { default: 2 });

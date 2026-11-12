@@ -7,7 +7,7 @@ authorized map image in Foundry's module settings.
 
 **Neon Dossiers is unofficial content provided under the Homebrew Content Policy of R. Talsorian Games and is not approved or endorsed by RTG. This content references materials that are the property of R. Talsorian Games and its licensees.**
 
-## City navigation: v0.4.1
+## City navigation: v0.5.0
 
 Browse a map you provide, search places, filter
 GM-defined categories and open dossiers from markers or the place list. GMs can create,
@@ -22,8 +22,8 @@ The module overlays the **actual Foundry map scene**, not a separate dossier
 window. Numbered places open compact dossier cards directly over the map;
 players never need to open a journal. District cards, personal route controls,
 and route lines are on the scene too. The GM uses the same interface with a
-collapsible tool menu and a side-card editor. Journals remain the invisible
-storage and permission layer; illustrations remain local files.
+collapsible tool menu and a side-card editor. Journal pages also show each
+description in Foundry's journal directory; illustrations remain local files.
 The independently authored red/black terminal layout has a
 compact header, color-coded category strip, large draggable map, numbered
 markers, full-height sidebands and a separate slide-out dossier. The left band
@@ -134,7 +134,7 @@ Old distant `roadNode` assignments no longer invent straight access lines.
 The demo stores changes only in browser localStorage. It is not multiplayer;
 the role toggle is a UI simulation, **not an authorization boundary**. Do not
 enter secrets in a public demo or rely on it to verify Foundry's server-side
-permissions. Reset clears only this demo's saved data. Image uploads and individual ownership dialogs require
+permissions. Reset clears only this demo's saved data. Image uploads require
 Foundry. Blocking browser storage prevents startup and reports an error.
 
 For local use (Node.js 22+, no dependencies):
@@ -149,7 +149,7 @@ Opening the HTML via `file://` is not supported.
 
 To publish a Foundry-installable release, keep `package.json`, `module.json`
 version and the manifest/download URLs aligned, then push the matching tag
-(e.g. `v0.4.1`). The **Publish module release** workflow checks the version,
+(e.g. `v0.5.0`). The **Publish module release** workflow checks the version,
 runs tests, builds the ZIP and attaches the ZIP and `module.json` to that tag's
 release. CI artifacts alone do not make the manifest's release URL live.
 
@@ -175,8 +175,8 @@ New places receive the next unused higher number; deleted numbers remain gaps
 until the category has reached **99**, then the lowest free number is reused.
 A category can contain at most 99 places, including private and retained legacy
 map dossiers. Moving a place to another category allocates a new number there.
-Only Foundry's active GM can allocate numbers; other GMs can still edit an
-already-numbered dossier without changing its category.
+Only Foundry's active GM can create or change collection dossiers and allocate
+their numbers.
 Existing dossiers receive numbers automatically when the active GM opens the
 module. If a legacy category exceeds 99 places, a visible error asks the GM to
 reassign/delete places; the board stays usable for that repair. Unassigned
@@ -185,9 +185,9 @@ failed writes can leave reserved gaps.
 
 **Add place** opens the editor with a centered marker position. Fill in a title,
 category and plain-text description. Click the map while editing, or set X/Y
-between 0 and 1 (left/top = 0, right/bottom = 1). Save creates a core journal
-document. Choose a marker/list item to read or edit its dossier. The journal's
-module flags, not its blank core journal page view, hold the public dossier.
+between 0 and 1 (left/top = 0, right/bottom = 1). Save creates a journal page
+in the private collection. Choose a marker/list item to read or edit its dossier.
+Its description is also readable in the journal directory.
 
 **Dossier illustration** uses Foundry's file picker. Upload your permitted images
 using Foundry's own file browser, then select them. Accepted formats are PNG,
@@ -233,11 +233,9 @@ controls remain available; the HUD also supplies zoom/center buttons.
 Leaving the scene removes the HUD, pointer handlers and personal route.
 No journal window or Journal Notes visibility toggle is required.
 
-Only POIs whose default journal ownership is **Observer or higher**, with no
-explicit lower player grant, get scene
-notes: private or individually shared locations must not leak coordinates
-through the scene document. Individually shared dossiers receive **client-only
-HUD markers** for authorized players, never public note documents.
+Only globally shared POIs get public scene notes: private locations must not
+leak coordinates through the scene document. Retained legacy dossiers with
+individual grants receive client-only HUD markers for authorized players.
 Core note icons are hidden on the managed scene to avoid duplicate markers.
 Core journal permissions remain
 authoritative for note access. Public note position/title changes and
@@ -347,32 +345,30 @@ or broadcast. Private/revoked POIs cannot remain as cached starts/destinations.
 
 ## Permissions and private information
 
-Public dossiers are core **JournalEntry documents**. Foundry enforces their
-ownership on the server. New places default to no player access. Players see
-only documents for which core permissions grant **Observer** or higher.
-**Permissions** opens Foundry's ownership dialog for individual access.
-**Make private** resets all player grants, not just the default permission.
-Permission/document hooks re-check access and discard rendered dossier content.
-An external document/user update also closes an unsaved editor to avoid showing
-stale access; save your work before changing ownership elsewhere.
+The active GM creates a **Neon Dossiers** folder containing three core
+JournalEntry documents: private places, shared places, and private GM notes.
+Each place is a separate page; its optional GM notes are on a page of the same
+name in the notes journal. Foundry enforces journal permissions on the server.
+New places are private. Sharing moves the page to the shared journal for all
+players; making it private moves it back. Individual player grants are not
+supported for collection dossiers. Renaming the folder or journals is safe,
+but do not alter their ownership or page permissions.
 
-The active GM automatically organizes existing and new module dossiers into
-two journal folders, **Neon Dossiers - Private** and **Neon Dossiers - Shared**.
-Any player grant, including Limited or an individual grant, places a dossier
-in the shared folder; GM-only grants remain private. Switching permissions
-moves the dossier automatically while an active GM is online. The folders are
-created on world startup and identified by module flags, so renaming them is safe.
-Other journals and separate GM-note documents are not moved. On world startup,
-module dossiers are reorganized even if they were manually moved elsewhere.
-Folders do not grant or revoke permissions; Foundry document ownership remains
-the authority.
+Edit dossiers and notes in Neon Dossiers, not in the journal directory: the
+module stores structured data in page flags and displays descriptions as journal
+text. External edits to generated page text are not automatically imported and
+block module updates to avoid overwriting them. Back up any such edits before
+restoring the generated text. Deleting a place in the module removes its note
+page as well. If a place page is deleted in the directory, the active GM cleans
+up its corresponding note page; check for orphans if no active GM is online.
 
-**Private GM notes live in separate GM-only JournalEntry documents**, never in
-public place flags, world settings or custom socket payloads. These private
-documents are named `Private GM notes (place-id)` (localized). Do not manually
-grant players access to those documents. Deleting a place through the module
-deletes its private note document too. Deleting directly through the core
-directory can leave an orphan private note document; remove it there as GM.
+Existing individual journals are **not migrated** into the collections. Back up
+your world before updating or deleting old places and journals. Old journals
+can be removed manually after preserving any data you need.
+Foundry does not document a fixed journal-count limit; large worlds can still
+affect performance. [The Forge's world-size guidance](https://forums.forge-vtt.com/t/world-size-check/12105)
+suggests roughly 2,000 world documents as a performance guideline, not an
+engine limit. Collections reduce the number of top-level journal documents.
 
 Sharing a dossier exposes its entire public description and image path.
 Permission revocation removes the current module view; it cannot erase text
@@ -410,7 +406,7 @@ npm run build
 npm run build:preview
 ```
 
-The builder creates `dist/neon-dossiers-0.4.1.zip` with `module.json` at the
+The builder creates `dist/neon-dossiers-0.5.0.zip` with `module.json` at the
 archive root and a standalone `dist/module.json`. Only runtime files and
 licensing/provenance notices, including `docs/ASSET_SOURCES.md`, are installed;
 tests, tools and other development docs

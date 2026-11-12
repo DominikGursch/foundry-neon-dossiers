@@ -1,4 +1,5 @@
 import { ID, placeData, nextMarkerNumber } from "./model.js";
+import { collectionRecords, createCollectionPlace, updateCollectionPlace } from "./collections.js";
 
 let pending = Promise.resolve();
 
@@ -14,7 +15,7 @@ function requireNumberingGM() {
 }
 
 function storedPlaces() {
-  return game.journal.contents.filter(entry => entry.getFlag(ID, "place")).map(entry => {
+  return [...game.journal.contents.filter(entry => entry.getFlag(ID, "place")), ...collectionRecords()].map(entry => {
     try { return { entry, place: placeData(entry.getFlag(ID, "place")) }; }
     catch (error) {
       console.error(`${ID}: invalid numbered place ${entry.id}`, error);
@@ -93,9 +94,8 @@ export function createNumberedPlace(input) {
     const place = placeData(input);
     await migrate(place.category);
     const markerNumber = await reserveNumber(place.category, storedPlaces().map(record => record.place), countersData());
-    return JournalEntry.create({
-      name: place.title, ownership: { default: 0 }, flags: { [ID]: { place: { ...place, markerNumber } } }
-    });
+    const id = await createCollectionPlace({ ...place, markerNumber });
+    return collectionRecords().find(entry => entry.id === id);
   });
 }
 
@@ -115,6 +115,10 @@ export function updateNumberedPlace(entry, input) {
     const updated = { ...place, markerNumber };
     for (const key of ["district", "roadNode", "access", "mapImage"]) {
       if (existing[key] !== undefined && updated[key] === undefined) updated[`-=${key}`] = null;
+    }
+    if (entry.page) {
+      await updateCollectionPlace(entry.id, { ...place, markerNumber });
+      return entry;
     }
     return entry.update({ name: place.title, [`flags.${ID}.place`]: updated });
   });

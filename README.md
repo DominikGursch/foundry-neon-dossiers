@@ -7,7 +7,7 @@ authorized map image in Foundry's module settings.
 
 **Neon Dossiers is unofficial content provided under the Homebrew Content Policy of R. Talsorian Games and is not approved or endorsed by RTG. This content references materials that are the property of R. Talsorian Games and its licensees.**
 
-## City navigation: v0.5.1
+## City navigation: v0.5.2
 
 Browse a map you provide, search places, filter
 GM-defined categories and open dossiers from markers or the place list. GMs can create,
@@ -57,12 +57,11 @@ on new maps. Coordinates, districts and roads must be recreated or explicitly
 restored for the selected image. You are responsible for rights and attribution
 for images you supply.
 
-**Target: Foundry VTT v12 only.** This module uses core v12 Application,
-JournalEntry and ownership APIs. Unit tests and mocked lifecycle/UI checks are
-not real-engine certification: this release has **not been run in a licensed
-Foundry instance**. No `verified` compatibility claim is made. Other versions
-are deliberately excluded pending engine testing. No game system is required;
-integration with `cyberpunk-red-core` has not been runtime-tested.
+**Target: Foundry VTT v12 only.** The user reports testing v0.5.1 in Foundry
+VTT 12.343 with Cyberpunk RED Core 0.92.4; v0.5.2 updates compatibility metadata
+without changing module functionality. Other Foundry generations remain
+outside the declared compatibility range. The module is system-independent
+and does not require a particular game system.
 
 ## Install
 
@@ -149,7 +148,7 @@ Opening the HTML via `file://` is not supported.
 
 To publish a Foundry-installable release, keep `package.json`, `module.json`
 version and the manifest/download URLs aligned, then push the matching tag
-(e.g. `v0.5.1`). The **Publish module release** workflow checks the version,
+(e.g. `v0.5.2`). The **Publish module release** workflow checks the version,
 runs tests, builds the ZIP and attaches the ZIP and `module.json` to that tag's
 release. CI artifacts alone do not make the manifest's release URL live.
 
@@ -410,14 +409,14 @@ npm run build
 npm run build:preview
 ```
 
-The builder creates `dist/neon-dossiers-0.5.1.zip` with `module.json` at the
+The builder creates `dist/neon-dossiers-0.5.2.zip` with `module.json` at the
 archive root and a standalone `dist/module.json`. Only runtime files and
 licensing/provenance notices, including `docs/ASSET_SOURCES.md`, are installed;
 tests, tools and other development docs
 and Git metadata are excluded. `dist/preview` is a separate static site and is
 never installed as part of the Foundry module.
 
-Before calling a future release engine-verified, check in a real v12 world:
+For future releases, check in a real v12 world:
 open both settings menu and toolbar; add/edit/delete; select a local image;
 resize the board; check keyboard focus; connect a non-GM; share/revoke a
 dossier while it is open on that client; confirm private notes never appear
@@ -429,4 +428,4 @@ places, and verify no stale route/listeners or duplicate core note icons remain.
 Configure real image dimensions/scale, test an unconnected place, a
 disconnected road and mode restrictions, and inspect a district containing
 both public and private places. This checklist
-is not a claim those engine checks ran.
+is a suggested checklist, not a record of the user's individual checks.

@@ -28,10 +28,10 @@ export function atlasData(input) {
       !Number.isFinite(kmAcross) || kmAcross <= 0 || kmAcross > 1000) {
     throw new Error("Map dimensions must be 100-20000 px; width must represent >0 to 1000 km");
   }
-  if (!Array.isArray(input.nodes) || input.nodes.length > 2000 ||
+  if (!Array.isArray(input.nodes) || input.nodes.length > 4000 ||
       !Array.isArray(input.edges) || input.edges.length > 8000 ||
       !Array.isArray(input.districts) || input.districts.length > 100) {
-    throw new Error("Expected nodes (max 2000), edges (max 8000), districts (max 100)");
+    throw new Error("Expected nodes (max 4000), edges (max 8000), districts (max 100)");
   }
   const ids = new Set();
   const nodes = input.nodes.map(node => {

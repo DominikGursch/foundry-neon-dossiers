@@ -49,6 +49,22 @@ test("atlas round-trip, bounded schema and demo provenance", () => {
   }
 });
 
+test("street networks support 4000 nodes and retain the 8000 edge limit", () => {
+  const nodes = Array.from({ length: 4000 }, (_, i) => ({ id: `n${i}`, x: i / 3999, y: 0.5 }));
+  const edges = nodes.slice(1).map((node, i) => ({ from: nodes[i].id, to: node.id, modes: ["walk", "car"] }));
+  const atlas = atlasData({ ...emptyAtlas(DEFAULT_MAP), nodes, edges });
+  assert.equal(atlas.nodes.length, 4000);
+  assert.equal(atlas.edges.length, 3999);
+  for (const mode of ["walk", "car"]) {
+    const route = findRoute(atlas, nodes[0], nodes.at(-1), mode);
+    assert.ok(Math.abs(route.distanceKm - atlas.kmAcross) < 1e-8);
+  }
+  assert.throws(() => atlasData({ ...atlas, nodes: [...nodes, { id: "extra", x: 0, y: 0 }] }), /nodes \(max 4000\)/);
+  const maxEdges = Array.from({ length: 8000 }, () => ({ from: "n0", to: "n1", modes: ["walk"] }));
+  assert.equal(atlasData({ ...atlas, edges: maxEdges }).edges.length, 8000);
+  assert.throws(() => atlasData({ ...atlas, edges: [...maxEdges, maxEdges[0]] }), /edges \(max 8000\)/);
+});
+
 test("shortest path follows permitted streets instead of crossing the blocked shortcut", () => {
   const atlas = map(), a = atlas.nodes[0], d = atlas.nodes[3];
   const drive = findRoute(atlas, a, d, "car");

@@ -50,6 +50,16 @@ test("adds and moves nodes transactionally with generated and explicit identifie
   assert.equal(draft.atlas.nodes.length, 4);
 });
 
+test("editor accepts the 4000th node and rejects the 4001st without changing the draft", () => {
+  const nodes = Array.from({ length: 3999 }, (_, i) => ({ id: `n${i}`, x: i / 4000, y: 0.5 }));
+  const draft = new RoadDraft({ ...emptyAtlas(DEFAULT_MAP), nodes });
+  assert.equal(draft.addNode({ id: "n3999", x: 0.999, y: 0.5 }).atlas.nodes.length, 4000);
+  const result = draft.addNode({ id: "n4000", x: 1, y: 0.5 });
+  assert.equal(result.ok, false);
+  assert.match(result.error.message, /nodes \(max 4000\)/);
+  assert.equal(draft.atlas.nodes.length, 4000);
+});
+
 test("splitSegment splits every parallel edge while retaining direction and per-edge modes", () => {
   const draft = new RoadDraft(makeAtlas());
   const result = draft.splitSegment("a", "b", { id: "mid", x: 0.3, y: 0.3 });

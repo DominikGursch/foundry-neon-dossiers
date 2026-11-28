@@ -7,7 +7,7 @@ authorized map image in Foundry's module settings.
 
 **Neon Dossiers is unofficial content provided under the Homebrew Content Policy of R. Talsorian Games and is not approved or endorsed by RTG. This content references materials that are the property of R. Talsorian Games and its licensees.**
 
-## City navigation: v0.5.2
+## City navigation: v0.5.3
 
 Browse a map you provide, search places, filter
 GM-defined categories and open dossiers from markers or the place list. GMs can create,
@@ -58,8 +58,8 @@ restored for the selected image. You are responsible for rights and attribution
 for images you supply.
 
 **Target: Foundry VTT v12 only.** The user reports testing v0.5.1 in Foundry
-VTT 12.343 with Cyberpunk RED Core 0.92.4; v0.5.2 updates compatibility metadata
-without changing module functionality. Other Foundry generations remain
+VTT 12.343 with Cyberpunk RED Core 0.92.4; v0.5.3 increases the street-network
+node limit since that test. Other Foundry generations remain
 outside the declared compatibility range. The module is system-independent
 and does not require a particular game system.
 
@@ -148,7 +148,7 @@ Opening the HTML via `file://` is not supported.
 
 To publish a Foundry-installable release, keep `package.json`, `module.json`
 version and the manifest/download URLs aligned, then push the matching tag
-(e.g. `v0.5.2`). The **Publish module release** workflow checks the version,
+(e.g. `v0.5.3`). The **Publish module release** workflow checks the version,
 runs tests, builds the ZIP and attaches the ZIP and `module.json` to that tag's
 release. CI artifacts alone do not make the manifest's release URL live.
 
@@ -270,6 +270,8 @@ previous access path is removed when saved and may need to be traced again.
 
 New custom images begin with an empty street network. Draw the streets and
 access paths required by your campaign; no routes are inferred from the image.
+Each map supports up to 4,000 road nodes and 8,000 road segments. Large networks
+can slow down editing, network inspection and route calculations.
 
 In the editor, **Check network** shows component counts for a chosen mode,
 amber endpoints and red crossings without a shared node. A crossing warning
@@ -409,7 +411,7 @@ npm run build
 npm run build:preview
 ```
 
-The builder creates `dist/neon-dossiers-0.5.2.zip` with `module.json` at the
+The builder creates `dist/neon-dossiers-0.5.3.zip` with `module.json` at the
 archive root and a standalone `dist/module.json`. Only runtime files and
 licensing/provenance notices, including `docs/ASSET_SOURCES.md`, are installed;
 tests, tools and other development docs
